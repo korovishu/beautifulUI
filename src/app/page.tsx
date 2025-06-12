@@ -1,17 +1,13 @@
 "use client";
-import { useState, useEffect, createContext, useContext, useRef } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import {
   Heart,
   MessageCircle,
-  Share2,
   X,
-  ChevronLeft,
-  ChevronRight,
   User,
   Send,
-  ArrowRight,
   Info,
   Eye,
   EyeOff,

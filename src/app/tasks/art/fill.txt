@@ -1,0 +1,13 @@
+medium - 
+Create a web application using NextJS and Typescript. It should show at least six modern artistic elements. Each element should have a unique animation when hovered upon with the mouse. The app's background should be modern and have a flowy animation. Provide the response in a single .tsx file.
+
+Wrote it myself differently.
+
+title - Modern arts
+Desc - Showcase artistic elements that animate upon hovering.
+comment - Create six different artistic elements with unique animation styles.
+
+https://neumorphism.io/
+
+Justification - 
+Design is minimalist and augmented with smooth animations. It provides clear feedback to user submissions. Code is modular with zero lint and type errors. All the features are perfectly functional.

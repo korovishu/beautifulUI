@@ -1,0 +1,21 @@
+easy - 
+Create a web application for sharing confessions while maintaining privacy. Use NextJS and Typescript. Provide the response in a single .tsx file.
+
+
+medium/hard - 
+Create a web application for sharing confessions while maintaining privacy. Users should be able to post a confession with a title and a description. Create a side column to show popular confessions on the basis of the number of likes. Users should be able to like and comment on a confession post. Use NextJS and Typescript. Provide the response in a single .tsx file.
+
+Wrote it myself differently.
+
+title - Confess It 
+
+Description - A web application for sharing confessions while maintaining privacy.
+
+Commentary - Create a submission form for creating a post. Provide option to select tags. Display posts without user info and provide option to filter the posts.
+
+rewrite changes - Created a submission form for creating a post. Provided option to select tags. Displayed posts without user info and provided option to filter the posts. Provided option to switch between light and dark mode.
+
+https://www.confessout.com/
+
+Justification-
+Design is minimalist and augmented with smooth animations. It provides clear feedback to user submissions. Code is modular with zero lint and type errors. All the features are perfectly functional.

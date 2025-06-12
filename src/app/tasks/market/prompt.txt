@@ -1,0 +1,5 @@
+easy - 
+I want to create an online shopping page for my furniture store. Please create the UI using NextJS and Typescript. Provide the response in a single self-contained .tsx file.
+
+medium - 
+I want to create an online shopping page for my furniture store. It should have wooden-themed colors. Users should be able to filter the items based on furniture type and price. The page should be able to work properly on both mobile and laptop. Please create the UI using NextJS and Typescript. Provide the response in a single self-contained .tsx file.

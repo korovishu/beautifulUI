@@ -1,0 +1,22 @@
+easy - 
+I want a restaurant review website. Please create the UI using Next.js and Typescript. It should be self-contained in a single .tsx file.
+
+medium/hard - 
+I want a restaurant review website. Users should be able to visit the detail page of any restaurant. Users should be able to filter the restaurants based on rating and cuisine type. Each restaurant should have a budget tag as well. Please create the UI using Next.js and Typescript. It should be self-contained in a single .tsx file.
+
+Title *
+Review it
+
+Description *
+A website for restaurant reviews.
+
+Commentary *
+Create a landing page displaying all restaurants with their reviews. Provide a filter bar for filtering the restaurants. Create detail page for a restaurant.
+
+Rewrite changes - 
+Created a landing page displaying all restaurants with their reviews. Provided a filter bar for filtering the restaurants and an option to reset the filters. Created detail page for a restaurant.
+
+https://www.yelp.com/search?find_desc=Restaurants&find_loc=San+Francisco%2C+CA
+
+Justification-
+Design is minimalist and augmented with smooth animations. It provides clear feedback to user submissions. Code is modular with zero lint and type errors. All the features are perfectly functional.

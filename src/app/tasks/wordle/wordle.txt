@@ -1,0 +1,24 @@
+medium - 
+Create a web application for the Wordle game using NextJS and Typescript.
+Users should have six attempts to correctly guess a five-letter word.
+Provide a virtual keyboard on screen to show the status of each letter.
+Incorrectly guessed letters should be marked gray. 
+Correctly guessed letters that are in the right position should be marked green, otherwise they should be marked yellow. 
+Users should not be allowed to enter invalid words. Keep the design simple and provide an option to switch between light and dark mode. 
+Provide the response in a single .tsx file.
+
+easy - 
+Create a web application for the Wordle game using NextJS and Typescript. Provide the response in a single .tsx file.
+
+title - Wordle
+
+Description -  
+A word-guessing game where players have six attempts to guess a secret five-letter word. After each guess, letters are color-coded: green for correct letters in the right position, yellow for correct letters in the wrong position, and gray for incorrect letters. The goal is to guess the word in as few tries as possible.
+
+Commentary-
+Create a 5x6 grid to display user guesses and a virtual keyboard for input. Use a predefined list of 5-letter words, selecting one randomly as the target word each day. As users type guesses, validate the word against the list and provide feedback by coloring letters: green for correct position, yellow for correct letter wrong position, and gray for incorrect letters. Track game state (current guess, past guesses, win/loss) and disable input after game ends. Add mobile responsiveness and basic animations for feedback.
+
+https://www.nytimes.com/games/wordle/index.html
+
+Justification-
+Design is minimalist and augmented with smooth animations. It provides clear feedback to user submissions. Code is modular with zero lint and type errors. All the features are perfectly functional.

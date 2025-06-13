@@ -1,4 +1,4 @@
-medium - 
+Medium - 
 Create a web application for the Wordle game using NextJS and Typescript.
 Users should have six attempts to correctly guess a five-letter word.
 Provide a virtual keyboard on screen to show the status of each letter.
@@ -9,7 +9,7 @@ Add a landing page with the game in between. Include sections like how to play a
 Make it look professional.
 Provide the response in a single .tsx file.
 
-easy - 
+Easy - 
 Create a web application for the Wordle game using NextJS and Typescript. Provide the response in a single .tsx file.
 
 title - Wordle

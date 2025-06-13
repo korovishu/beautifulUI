@@ -1,26 +1,23 @@
-EASY - 
-Create a clone of Wikipedia website. 
-Clone the article page with mock data and some images. 
-Make it with Next.js and Typescript. 
-The code should be self-contained in a single .tsx file.
+Medium - 
+I want a simplified version of LinkedIn. I want a home page where there are posts to like and comment on, a profile page with name, location, bio, and a photo with an edit button, and a form to type and post a new post. Please build it using Next.js and TypeScript in a single .tsx file.
+
+Hard - 
+I want a simplified version of LinkedIn. I want a home page where there are posts to like and comment on, a profile page with name, location, bio, and a photo with an edit button, and a form to type and post a new post. An avatar should be there on the top right of the header with an edit icon it, clicking on which should open a popup to edit the profile. Please build it using Next.js and TypeScript in a single .tsx file.
+
+Title-
+Simple Linkedin
 
 Description - 
-This Wikipedia replica faithfully reproduces the exact look, feel, and functionality of the original Wikipedia interface. 
-It features authentic styling, responsive design, and interactive elements like collapsible sections, language selection, and appearance controls, providing users with a familiar and seamless browsing experience identical to the real Wikipedia.
+A simple LinkedIn-inspired app that allows users to post, comment, and like posts, along with a personal page containing basic information and a profile picture.
 
 Commentary - 
-The Wikipedia replica is built as a single-file React component using Next.js, with all styling contained in styled-jsx for portability. 
-The component structure includes a responsive sidebar, header with search functionality, and article content with interactive elements, while CSS variables enable theme customization and the useState hook manages interactive features like collapsible sections and appearance settings.
+I started by creating the page structure using Next.js and Tailwind, then added state management for posts and comments, a modal for editing data and publishing new posts, and support for night and light modes.
+
 
 rewrite changes - 
-The model response does not build due to issues in the code. 
-The rewritten code has been written to replicate the UI of Wikipedia website.
-The UI involves a side bar, the main content page as well as the content index.
+The model response had a very rudimentary and outdated interface. While it met some functional requirements, it lacked a modern design, dark mode compatibility, or responsiveness. It felt very bland and unrealistic for an app like LinkedIn. In the redesign, I brought the design up to speed with Tailwind CSS, added more advanced interactions like likes and comments, and made the profile editable, with dark mode compatibility. The entire code is in a .tsx file and TypeScript and covers all of the prompt requirements perfectly.
 
-https://en.wikipedia.org/wiki/Ancient_Roman_pottery
+https://www.linkedin.com/
 
 Justification - 
-5 - Visual Appearance: The UI is visually appealing, full of animations, transitions, and comfortable colors. All of this can be seen in the main section.
-5 - Code Quality: The code is well-maintained and optimized, which can be seen in the division between certain parts of the code.
-
-5- Feature Completeness: All of the features required in the prompt are added, including some others that were implied. 
+This response touches on all the aspects that are required. From a functionality perspective, there is a homepage where you have blog posts that you can interact with through liking and commenting, a profile page with name, location, bio, and image, and an edit button that is functional, and a writing form for a new post, all of which are ideal. Regarding how it looks, it is rendered super modern and nice with Tailwind. It has night mode, and the animations and hover are all smooth, unlike the older design, which was super old-school and lacked any modern UI niceties. The code is written in the purest way possible with TypeScript, all in a single .tsx file. Status and interaction management are logical and neat, and the result is a streamlined, efficient version of LinkedIn. 

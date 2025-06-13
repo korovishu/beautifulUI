@@ -1,1536 +1,817 @@
 "use client";
-import { useState, useEffect, createContext, useContext } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { formatDistanceToNow } from "date-fns";
-import {
-  Heart,
-  MessageCircle,
-  X,
-  User,
-  Send,
-  Info,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 
-// Theme context
-type ThemeContextType = {
-  isDarkMode: boolean;
-  toggleTheme: () => void;
+const words = [
+  "APPLE",
+  "BEACH",
+  "BRAIN",
+  "CHAIR",
+  "DREAM",
+  "EARTH",
+  "FRUIT",
+  "GHOST",
+  "HEART",
+  "HOUSE",
+  "LIGHT",
+  "MONEY",
+  "MUSIC",
+  "NIGHT",
+  "OCEAN",
+  "PAPER",
+  "PARTY",
+  "PLANT",
+  "POWER",
+  "QUEEN",
+  "RADIO",
+  "RIVER",
+  "SMILE",
+  "STONE",
+  "STORE",
+  "TABLE",
+  "THING",
+  "TIGER",
+  "TRAIN",
+  "VOICE",
+  "WATER",
+  "WOMAN",
+  "WORLD",
+  "YOUTH",
+  "ZEBRA",
+  "ALERT",
+  "BLAZE",
+  "CRANE",
+  "DRINK",
+  "ENJOY",
+  "FLAME",
+  "GRAPE",
+  "HONEY",
+  "INPUT",
+  "JOKER",
+  "KNOCK",
+  "LEMON",
+  "MAGIC",
+];
+
+const maxAttempts = 6;
+
+type Attempt = {
+  word: string;
+  result: ("green" | "yellow" | "gray")[];
 };
 
-const ThemeContext = createContext<ThemeContextType>({
-  isDarkMode: false,
-  toggleTheme: () => {},
-});
-
-// Utility function to get local time
-const getCurrentLocalTime = () => {
-  return new Date().toLocaleString("en-US", {
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-  });
-};
-
-// Utility function to calculate time difference
-const getTimeDifference = (dateString: string) => {
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "Invalid date";
-    return formatDistanceToNow(date, { addSuffix: true });
-  } catch {
-    return "Invalid date";
-  }
-};
-
-// Add global styles
-const GlobalStyles = ({ isDarkMode }: { isDarkMode: boolean }) => (
-  <style jsx global>{`
-    /* Import modern sans-serif fonts */
-    @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
-
-    /* Reset styles and modern base */
-    :root {
-      --font-primary: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont,
-        "Segoe UI", Roboto, sans-serif;
-      --font-secondary: var(--font-primary);
-    }
-
-    /* Base typography */
-    body {
-      font-family: var(--font-primary);
-      font-size: 16px;
-      line-height: 1.5;
-      color: ${isDarkMode ? "#e2e8f0" : "#1e293b"};
-      background-color: ${isDarkMode ? "#0f172a" : "#f8fafc"};
-      margin: 0;
-      padding: 0;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    /* Consistent heading styles */
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-      font-family: var(--font-primary);
-      font-weight: 700;
-      line-height: 1.2;
-      margin-bottom: 0.5em;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      font-weight: 800;
-    }
-
-    h2 {
-      font-size: 2rem;
-      font-weight: 700;
-    }
-
-    h3 {
-      font-size: 1.75rem;
-      font-weight: 600;
-    }
-
-    h4 {
-      font-size: 1.5rem;
-      font-weight: 600;
-    }
-
-    h5 {
-      font-size: 1.25rem;
-      font-weight: 500;
-    }
-
-    h6 {
-      font-size: 1rem;
-      font-weight: 500;
-    }
-
-    /* Consistent paragraph styles */
-    p {
-      font-family: var(--font-primary);
-      font-size: 1rem;
-      line-height: 1.6;
-      margin-bottom: 1em;
-    }
-
-    /* Consistent link styles */
-    a {
-      font-family: var(--font-primary);
-      color: ${isDarkMode ? "#60a5fa" : "#3b82f6"};
-      text-decoration: none;
-      transition: color 0.2s ease;
-    }
-
-    a:hover {
-      color: ${isDarkMode ? "#93c5fd" : "#2563eb"};
-      text-decoration: underline;
-    }
-
-    /* Consistent list styles */
-    ul,
-    ol {
-      font-family: var(--font-primary);
-      line-height: 1.6;
-      margin-left: 1.5em;
-      margin-bottom: 1em;
-    }
-
-    li {
-      margin-bottom: 0.5em;
-    }
-
-    /* Input elements */
-    input,
-    textarea,
-    select,
-    button {
-      font-family: var(--font-primary);
-      font-size: 1rem;
-    }
-
-    /* Blockquote styling */
-    blockquote {
-      font-family: var(--font-secondary);
-      font-size: 1.1rem;
-      font-style: italic;
-      border-left: 4px solid ${isDarkMode ? "#475569" : "#cbd5e1"};
-      padding: 0.5em 1em;
-      margin: 1em 0;
-      color: ${isDarkMode ? "#94a3b8" : "#64748b"};
-    }
-  `}</style>
-);
-
-type Confession = {
-  id: string;
-  title: string;
-  content: string;
-  likes: number;
-  likedBy: string[];
-  comments: Comment[];
-  timestamp: string;
-};
-
-type Comment = {
-  id: string;
-  confessionId: string;
-  content: string;
-  author: string;
-  timestamp: string;
-};
-
-type User = {
-  id: string;
-  username: string;
-  avatarUrl: string;
-};
-
-type ToastProps = {
-  id: string;
-  type: "success" | "error" | "info";
-  message: string;
-};
-
-function Toast({ id, type, message }: ToastProps) {
-  const { isDarkMode } = useContext(ThemeContext);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      toast.dismiss(id);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [id]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -50 }}
-      className={`px-4 py-3 rounded-lg shadow-lg flex items-center justify-between max-w-md w-full ${
-        type === "success"
-          ? "bg-emerald-500"
-          : type === "error"
-          ? "bg-rose-500"
-          : "bg-blue-500"
-      } ${isDarkMode ? "text-white" : "text-white"}`}
-    >
-      <span className="mr-4">{message}</span>
-      <button
-        onClick={() => toast.dismiss(id)}
-        className="text-white hover:text-gray-200 transition-colors"
-      >
-        <X size={18} />
-      </button>
-    </motion.div>
+const WordleGame = () => {
+  const [wordToGuess, setWordToGuess] = useState("");
+  const [currentAttempt, setCurrentAttempt] = useState<string[]>(
+    Array(5).fill("")
   );
-}
+  const [currentBox, setCurrentBox] = useState(0);
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [gameOver, setGameOver] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+  const [error, setError] = useState("");
+  const [showError, setShowError] = useState(false);
+  const [showGame, setShowGame] = useState(false);
+  const [letterStatuses, setLetterStatuses] = useState<{
+    [key: string]: "green" | "yellow" | "gray" | "default";
+  }>({});
+  const [showInstructions, setShowInstructions] = useState(false);
 
-const toast = {
-  queue: [] as ToastProps[],
-  add: (toast: ToastProps) => {
-    toast.queue.push(toast);
-    if (toast.queue.length === 1) {
-      toast.render();
-    }
-  },
-  dismiss: (id: string) => {
-    toast.queue = toast.queue.filter((toast) => toast.id !== id);
-    toast.render();
-  },
-  render: () => {
-    const ToastContainer = () => {
-      const { isDarkMode } = useContext(ThemeContext);
-      const [toasts, setToasts] = useState<ToastProps[]>(toast.queue);
-
-      useEffect(() => {
-        const updateToasts = () => {
-          setToasts([...toast.queue]);
-        };
-
-        updateToasts();
-      }, []);
-
-      return (
-        <div
-          className={`fixed bottom-4 right-4 z-50 flex flex-col space-y-2 ${
-            isDarkMode ? "bg-transparent" : "bg-transparent"
-          }`}
-        >
-          <AnimatePresence>
-            {toasts.map((toast) => (
-              <Toast key={toast.id} {...toast} />
-            ))}
-          </AnimatePresence>
-        </div>
-      );
-    };
-
-    const container = document.getElementById("toast-container");
-    if (container) {
-      container.innerHTML = "";
-      container.style.position = "fixed";
-      container.style.bottom = "1rem";
-      container.style.right = "1rem";
-      container.style.zIndex = "9999";
-      container.style.display = "flex";
-      container.style.flexDirection = "column";
-      container.style.alignItems = "flex-end";
-      container.style.gap = "0.5rem";
-      const root = createRoot(container);
-      root.render(<ToastContainer />);
-    } else {
-      const newContainer = document.createElement("div");
-      newContainer.id = "toast-container";
-      newContainer.style.position = "fixed";
-      newContainer.style.bottom = "1rem";
-      newContainer.style.right = "1rem";
-      newContainer.style.zIndex = "9999";
-      newContainer.style.display = "flex";
-      newContainer.style.flexDirection = "column";
-      newContainer.style.alignItems = "flex-end";
-      newContainer.style.gap = "0.5rem";
-      document.body.appendChild(newContainer);
-      const root = createRoot(newContainer);
-      root.render(<ToastContainer />);
-    }
-  },
-};
-
-function Input({
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  className = "",
-  id,
-  name,
-  required = false,
-}: {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-  type?: string;
-  className?: string;
-  id?: string;
-  name?: string;
-  required?: boolean;
-}) {
-  const { isDarkMode } = useContext(ThemeContext);
-
-  return (
-    <input
-      value={value}
-      onChange={onChange}
-      type={type}
-      id={id}
-      name={name}
-      required={required}
-      className={`block w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 ${
-        isDarkMode
-          ? "bg-slate-800 border-slate-700 text-slate-200 placeholder-slate-500"
-          : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
-      } ${className}`}
-      placeholder={placeholder}
-    />
-  );
-}
-
-function Textarea({
-  value,
-  onChange,
-  placeholder,
-  className = "",
-  id,
-  name,
-  required = false,
-}: {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  placeholder?: string;
-  className?: string;
-  id?: string;
-  name?: string;
-  required?: boolean;
-}) {
-  const { isDarkMode } = useContext(ThemeContext);
-
-  return (
-    <textarea
-      value={value}
-      onChange={onChange}
-      id={id}
-      name={name}
-      required={required}
-      className={`block w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 ${
-        isDarkMode
-          ? "bg-slate-800 border-slate-700 text-slate-200 placeholder-slate-500"
-          : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
-      } ${className}`}
-      placeholder={placeholder}
-      rows={4}
-    />
-  );
-}
-
-function Button({
-  onClick,
-  children,
-  className = "",
-  variant = "primary",
-  disabled = false,
-}: {
-  onClick?: () => void;
-  children: React.ReactNode;
-  className?: string;
-  variant?: "primary" | "secondary" | "danger" | "outline" | "ghost";
-  disabled?: boolean;
-}) {
-  const { isDarkMode } = useContext(ThemeContext);
-
-  const baseClasses = `inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
-    disabled ? "opacity-50 cursor-not-allowed" : ""
-  }`;
-
-  const variantClasses = {
-    primary: `bg-blue-600 hover:bg-blue-700 text-white ${
-      isDarkMode ? "shadow-lg shadow-blue-900/30" : "shadow-md"
-    }`,
-    secondary: `bg-purple-600 hover:bg-purple-700 text-white ${
-      isDarkMode ? "shadow-lg shadow-purple-900/30" : "shadow-md"
-    }`,
-    danger: `bg-rose-600 hover:bg-rose-700 text-white ${
-      isDarkMode ? "shadow-lg shadow-rose-900/30" : "shadow-md"
-    }`,
-    outline: `border-2 ${
-      isDarkMode
-        ? "border-slate-600 hover:bg-slate-800"
-        : "border-gray-300 hover:bg-gray-100"
-    } ${isDarkMode ? "text-slate-200" : "text-gray-700"}`,
-    ghost: `bg-transparent ${
-      isDarkMode
-        ? "hover:bg-slate-800 text-slate-300"
-        : "hover:bg-gray-100 text-gray-600"
-    }`,
-  };
-
-  return (
-    <motion.button
-      whileHover={{ scale: disabled ? 1 : 1.02 }}
-      whileTap={{ scale: disabled ? 1 : 0.98 }}
-      onClick={onClick}
-      className={`${baseClasses} ${variantClasses[variant]} ${className}`}
-      disabled={disabled}
-    >
-      {children}
-    </motion.button>
-  );
-}
-
-function ConfessionCard({
-  confession,
-  onClick,
-  isPopular,
-  isDarkMode,
-}: {
-  confession: Confession;
-  onClick: () => void;
-  isPopular?: boolean;
-  isDarkMode: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-      className={`p-6 rounded-xl shadow-lg overflow-hidden transition-all duration-300 cursor-pointer ${
-        isDarkMode
-          ? "bg-slate-800 hover:bg-slate-750 border border-slate-700"
-          : "bg-white hover:bg-gray-50 border border-gray-200"
-      } ${isPopular ? "border-l-4 border-l-blue-500" : ""}`}
-      onClick={onClick}
-    >
-      <h3
-        className={`text-lg font-semibold mb-2 ${
-          isDarkMode ? "text-white" : "text-gray-900"
-        }`}
-      >
-        {confession.title}
-      </h3>
-      <p
-        className={`text-sm mb-4 ${
-          isDarkMode ? "text-slate-300" : "text-gray-600"
-        }`}
-      >
-        {confession.content.length > 100
-          ? `${confession.content.slice(0, 100)}...`
-          : confession.content}
-      </p>
-      <div className="flex justify-between items-center text-xs text-gray-500">
-        <div className="flex items-center gap-2">
-          <Heart size={14} className="text-rose-500 fill-current" />
-          <span>{confession.likes}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <MessageCircle size={14} />
-          <span>{confession.comments.length}</span>
-        </div>
-        <span className={`${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
-          {getTimeDifference(confession.timestamp)}
-        </span>
-      </div>
-    </motion.div>
-  );
-}
-
-function CommentList({
-  comments,
-  confessionId,
-  onCommentSubmit,
-  currentUser,
-  isDarkMode,
-}: {
-  comments: Comment[];
-  confessionId: string;
-  onCommentSubmit: (content: string) => void;
-  currentUser: User;
-  isDarkMode: boolean;
-}) {
-  const [content, setContent] = useState("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim()) return;
-    onCommentSubmit(content);
-    setContent("");
-  };
-
-  return (
-    <div>
-      <h3
-        className={`text-lg font-semibold mb-4 ${
-          isDarkMode ? "text-white" : "text-gray-900"
-        }`}
-      >
-        Comments
-      </h3>
-
-      <form onSubmit={handleSubmit} className="mb-6 flex gap-2">
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Write a comment..."
-          className="flex-1"
-        />
-        <Button
-          type="submit"
-          className="self-end"
-          disabled={!content.trim()}
-          variant="primary"
-        >
-          <Send size={16} />
-        </Button>
-      </form>
-
-      <div className="space-y-4 max-h-80 overflow-y-auto">
-        {comments.length > 0 ? (
-          comments.map((comment) => (
-            <div
-              key={comment.id}
-              className={`p-4 rounded-lg ${
-                isDarkMode
-                  ? "bg-slate-750 border border-slate-700"
-                  : "bg-gray-50 border border-gray-200"
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                  {comment.author.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <span
-                    className={`font-medium text-sm ${
-                      isDarkMode ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    {comment.author}
-                  </span>
-                  <span
-                    className={`text-xs ml-1 ${
-                      isDarkMode ? "text-slate-400" : "text-gray-500"
-                    }`}
-                  >
-                    • {getTimeDifference(comment.timestamp)}
-                  </span>
-                </div>
-              </div>
-              <p
-                className={`text-sm ${
-                  isDarkMode ? "text-slate-300" : "text-gray-600"
-                }`}
-              >
-                {comment.content}
-              </p>
-            </div>
-          ))
-        ) : (
-          <p
-            className={`text-sm ${
-              isDarkMode ? "text-slate-400" : "text-gray-500"
-            }`}
-          >
-            No comments yet. Be the first to comment!
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ConfessionDetail({
-  confession,
-  onClose,
-  onLike,
-  onCommentSubmit,
-  currentUser,
-  isDarkMode,
-}: {
-  confession: Confession;
-  onClose: () => void;
-  onLike: () => void;
-  onCommentSubmit: (content: string) => void;
-  currentUser: User;
-  isDarkMode: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.3 }}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${
-        isDarkMode ? "bg-slate-900/80" : "bg-gray-900/80"
-      }`}
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 20 }}
-        className={`w-full max-w-2xl rounded-xl shadow-xl overflow-hidden ${
-          isDarkMode ? "bg-slate-800" : "bg-white"
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          className={`p-6 border-b ${
-            isDarkMode ? "border-slate-700" : "border-gray-200"
-          }`}
-        >
-          <div className="flex justify-between items-center">
-            <h2
-              className={`text-xl font-semibold ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
-              {confession.title}
-            </h2>
-            <Button
-              onClick={onClose}
-              variant="ghost"
-              className={`rounded-full ${
-                isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-100"
-              }`}
-            >
-              <X size={20} />
-            </Button>
-          </div>
-          <p
-            className={`text-sm ${
-              isDarkMode ? "text-slate-400" : "text-gray-500"
-            }`}
-          >
-            Posted {getTimeDifference(confession.timestamp)}
-          </p>
-        </div>
-
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
-          <p
-            className={`mb-6 ${
-              isDarkMode ? "text-slate-300" : "text-gray-700"
-            }`}
-          >
-            {confession.content}
-          </p>
-
-          <div className="flex gap-4 mb-6">
-            <Button onClick={onLike} className="flex-1" variant="outline">
-              <Heart size={18} className="mr-2" />
-              {confession.likes}{" "}
-              {confession.likedBy.includes(currentUser.id) ? "(Liked)" : ""}
-            </Button>
-            <Button className="flex-1" variant="outline">
-              <MessageCircle size={18} className="mr-2" />
-              Comment ({confession.comments.length})
-            </Button>
-          </div>
-
-          <CommentList
-            comments={confession.comments}
-            confessionId={confession.id}
-            onCommentSubmit={onCommentSubmit}
-            currentUser={currentUser}
-            isDarkMode={isDarkMode}
-          />
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function ConfessionForm({
-  onSubmit,
-  onClose,
-  isDarkMode,
-}: {
-  onSubmit: (title: string, content: string) => void;
-  onClose: () => void;
-  isDarkMode: boolean;
-}) {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
-    onSubmit(title, content);
-    setTitle("");
-    setContent("");
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.3 }}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${
-        isDarkMode ? "bg-slate-900/80" : "bg-gray-900/80"
-      }`}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 20 }}
-        className={`w-full max-w-md rounded-xl shadow-xl overflow-hidden ${
-          isDarkMode ? "bg-slate-800" : "bg-white"
-        }`}
-      >
-        <div
-          className={`p-6 border-b ${
-            isDarkMode ? "border-slate-700" : "border-gray-200"
-          }`}
-        >
-          <div className="flex justify-between items-center">
-            <h2
-              className={`text-xl font-semibold ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
-              Share Your Confession
-            </h2>
-            <Button
-              onClick={onClose}
-              variant="ghost"
-              className={`rounded-full ${
-                isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-100"
-              }`}
-            >
-              <X size={20} />
-            </Button>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label
-              htmlFor="title"
-              className={`block text-sm font-medium mb-1 ${
-                isDarkMode ? "text-slate-200" : "text-gray-700"
-              }`}
-            >
-              Title
-            </label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Give your confession a title"
-              required
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="content"
-              className={`block text-sm font-medium mb-1 ${
-                isDarkMode ? "text-slate-200" : "text-gray-700"
-              }`}
-            >
-              Your Confession
-            </label>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Write your confession..."
-              required
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" onClick={onClose} variant="outline">
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={!title.trim() || !content.trim()}
-              variant="primary"
-            >
-              Post Confession
-            </Button>
-          </div>
-        </form>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function EmptyState({
-  message,
-  buttonText,
-  onClick,
-  isDarkMode,
-}: {
-  message: string;
-  buttonText?: string;
-  onClick?: () => void;
-  isDarkMode: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className={`p-12 rounded-xl text-center ${
-        isDarkMode
-          ? "bg-slate-800 border border-slate-700"
-          : "bg-white border border-gray-200"
-      }`}
-    >
-      <div className="flex flex-col items-center justify-center space-y-4">
-        <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-          <Info size={24} className="text-blue-600" />
-        </div>
-        <h3
-          className={`text-lg font-medium ${
-            isDarkMode ? "text-white" : "text-gray-900"
-          }`}
-        >
-          {message}
-        </h3>
-        {buttonText && onClick && (
-          <Button onClick={onClick} variant="primary">
-            {buttonText}
-          </Button>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-function ConfessionFeed() {
-  // Get the current local time
-  const currentLocalTime = getCurrentLocalTime();
-
-  const { isDarkMode } = useContext(ThemeContext);
-  const [currentUser, setCurrentUser] = useState<User>({
-    id: "user-1",
-    username: "Anonymous",
-    avatarUrl: "",
-  });
-  const [confessions, setConfessions] = useState<Confession[]>([]);
-  const [popularConfessions, setPopularConfessions] = useState<Confession[]>(
+  // Keyboard layout - memoize since it never changes
+  const keyboardRows = useMemo(
+    () => [
+      ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+      ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+      ["Z", "X", "C", "V", "B", "N", "M"],
+    ],
     []
   );
-  const [selectedConfession, setSelectedConfession] =
-    useState<Confession | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<"all" | "popular">("all");
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkIsMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkIsMobile();
-    window.addEventListener("resize", checkIsMobile);
-    return () => window.removeEventListener("resize", checkIsMobile);
+    const randomIndex = Math.floor(Math.random() * words.length);
+    setWordToGuess(words[randomIndex]);
   }, []);
 
-  // Function to generate a random time within the last 24 hours
-  const generateRandomTimestamp = () => {
-    const now = new Date();
-    const randomHours = Math.floor(Math.random() * 24);
-    const randomMinutes = Math.floor(Math.random() * 60);
-    const randomTime = new Date(now);
-    randomTime.setHours(randomTime.getHours() - randomHours);
-    randomTime.setMinutes(randomTime.getMinutes() - randomMinutes);
-    return randomTime.toISOString();
-  };
+  const handleLetterInput = useCallback(
+    (letter: string) => {
+      if (gameOver || currentBox >= 5) return;
 
-  useEffect(() => {
-    const demoConfessions: Confession[] = [
-      {
-        id: "confession-1",
-        title: "Missing the old days",
-        content:
-          "I really miss the carefree days of my childhood. Everything felt simpler back then. I wonder what happened to that version of me.",
-        likes: 12,
-        likedBy: ["user-2", "user-3"],
-        comments: [
-          {
-            id: "comment-1",
-            confessionId: "confession-1",
-            content: "Same here! Childhood was the best time of my life.",
-            author: "user-2",
-            timestamp: generateRandomTimestamp(),
-          },
-        ],
-        timestamp: generateRandomTimestamp(),
-      },
-      {
-        id: "confession-2",
-        title: "Regret about college",
-        content:
-          "I wish I had taken my studies more seriously in college. Now I'm struggling to find a job that pays well and aligns with my passions. Anyone else feel the same?",
-        likes: 8,
-        likedBy: ["user-1", "user-4"],
-        comments: [],
-        timestamp: generateRandomTimestamp(),
-      },
-      {
-        id: "confession-3",
-        title: "Feeling stuck in life",
-        content:
-          "I feel like I'm just going through the motions of life without any real purpose. Has anyone found what they're truly passionate about and how did you get get",
-        timestamp: generateRandomTimestamp(),
-      },
-      {
-        id: "confession-4",
-        title: "Regret about a past relationship",
-        content:
-          "I still can't stop thinking about my ex. It feels like I wasted years of my life on someone who didn't truly care about me. Anyone else go through this?",
-        likes: 15,
-        likedBy: ["user-5", "user-6", "user-7"],
-        comments: [
-          {
-            id: "comment-2",
-            confessionId: "confession-4",
-            content:
-              "Time heals all wounds. You'll find someone better suited for you!",
-            author: "user-5",
-            timestamp: generateRandomTimestamp(),
-          },
-          {
-            id: "comment-3",
-            confessionId: "confession-4",
-            content: "Same here. But each experience makes us wiser.",
-            author: "user-6",
-            timestamp: generateRandomTimestamp(),
-          },
-        ],
-        timestamp: generateRandomTimestamp(),
-      },
-      {
-        id: "confession-5",
-        title: "Struggling with anxiety",
-        content:
-          "I'm really struggling with anxiety and panic attacks. I feel like I'm constantly on edge and don't know how to calm myself down. Has anyone else dealt with this?",
-        likes: 25,
-        likedBy: ["user-1", "user-2", "user-3", "user-4", "user-5", "user-8"],
-        comments: [
-          {
-            id: "comment-4",
-            confessionId: "confession-5",
-            content: "Try deep breathing exercises. They really help me.",
-            author: "user-8",
-            timestamp: generateRandomTimestamp(),
-          },
-          {
-            id: "comment-5",
-            confessionId: "confession-5",
-            content: "Consider speaking to a therapist if you can.",
-            author: "user-2",
-            timestamp: generateRandomTimestamp(),
-          },
-          {
-            id: "comment-6",
-            confessionId: "confession-5",
-            content: "You're not alone! Sending you lots of positive vibes.",
-            author: "user-9",
-            timestamp: generateRandomTimestamp(),
-          },
-        ],
-        timestamp: generateRandomTimestamp(),
-      },
-    ];
-
-    setConfessions(demoConfessions);
-    const sortedByLikes = [...demoConfessions].sort(
-      (a, b) => b.likes - a.likes
-    );
-    setPopularConfessions(sortedByLikes.slice(0, 3));
-
-    setTimeout(() => {
-      toast.add({
-        id: "welcome-toast",
-        type: "info",
-        message: "Welcome to ConfessIT! Share your thoughts anonymously.",
+      setCurrentAttempt((prev) => {
+        const newAttempt = [...prev];
+        newAttempt[currentBox] = letter;
+        return newAttempt;
       });
-    }, 500);
-  }, []);
+      setCurrentBox((prev) => Math.min(prev + 1, 4));
+      setError("");
+    },
+    [gameOver, currentBox]
+  );
 
-  const handleSubmitConfession = (title: string, content: string) => {
-    const newConfession: Confession = {
-      id: `confession-${Date.now()}`,
-      title,
-      content,
-      likes: 0,
-      likedBy: [],
-      comments: [],
-      timestamp: new Date().toISOString(),
-    };
-    setConfessions([newConfession, ...confessions]);
-    setShowForm(false);
-    setPopularConfessions((prev) =>
-      [...confessions, newConfession]
-        .sort((a, b) => b.likes - a.likes)
-        .slice(0, 3)
-    );
-
-    toast.add({
-      id: `toast-${Date.now()}`,
-      type: "success",
-      message: "Confession posted successfully!",
-    });
-  };
-
-  const handleLike = (confessionId: string) => {
-    const updatedConfessions = confessions.map((confession) => {
-      if (confession.id === confessionId) {
-        const isLiked = confession.likedBy.includes(currentUser.id);
-        return {
-          ...confession,
-          likes: isLiked ? confession.likes - 1 : confession.likes + 1,
-          likedBy: isLiked
-            ? confession.likedBy.filter((id) => id !== currentUser.id)
-            : [...confession.likedBy, currentUser.id],
-        };
+  const handleBackspace = useCallback(() => {
+    if (currentBox > 0 || currentAttempt[currentBox] !== "") {
+      setCurrentAttempt((prev) => {
+        const newAttempt = [...prev];
+        if (prev[currentBox] !== "") {
+          newAttempt[currentBox] = "";
+        } else {
+          newAttempt[currentBox - 1] = "";
+        }
+        return newAttempt;
+      });
+      if (currentAttempt[currentBox] === "") {
+        setCurrentBox((prev) => prev - 1);
       }
-      return confession;
-    });
-    setConfessions(updatedConfessions);
-    setPopularConfessions((prev) =>
-      [...updatedConfessions].sort((a, b) => b.likes - a.likes).slice(0, 3)
-    );
-
-    if (selectedConfession && selectedConfession.id === confessionId) {
-      setSelectedConfession(
-        updatedConfessions.find((c) => c.id === confessionId) || null
-      );
+      setError("");
     }
+  }, [currentBox, currentAttempt]);
 
-    toast.add({
-      id: `toast-${Date.now()}`,
-      type: "info",
-      message: `You ${
-        confessions
-          .find((c) => c.id === confessionId)
-          ?.likedBy.includes(currentUser.id)
-          ? "unliked"
-          : "liked"
-      } this confession`,
-    });
-  };
-
-  const handleCommentSubmit = (confessionId: string, content: string) => {
-    const updatedConfessions = confessions.map((confession) => {
-      if (confession.id === confessionId) {
-        const newComment: Comment = {
-          id: `comment-${Date.now()}`,
-          confessionId,
-          content,
-          author: currentUser.username,
-          timestamp: new Date().toISOString(),
-        };
-        return {
-          ...confession,
-          comments: [...confession.comments, newComment],
-        };
-      }
-      return confession;
-    });
-    setConfessions(updatedConfessions);
-    setPopularConfessions((prev) =>
-      [...updatedConfessions].sort((a, b) => b.likes - a.likes).slice(0, 3)
-    );
-
-    if (selectedConfession && selectedConfession.id === confessionId) {
-      setSelectedConfession(
-        updatedConfessions.find((c) => c.id === confessionId) || null
-      );
-    }
-
-    toast.add({
-      id: `toast-${Date.now()}`,
-      type: "success",
-      message: "Comment added successfully!",
-    });
-  };
-
-  const handleShare = async (confession: Confession) => {
+  const isValidWord = useCallback(async (word: string) => {
     try {
-      await navigator.share({
-        title: confession.title,
-        text: confession.content,
-        url: window.location.href,
-      });
-      toast.add({
-        id: `toast-${Date.now()}`,
-        type: "success",
-        message: "Confession shared successfully!",
-      });
-    } catch (error) {
-      toast.add({
-        id: `toast-${Date.now()}`,
-        type: "error",
-        message: "Couldn't share confession.",
-      });
+      const response = await fetch(
+        `https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`
+      );
+      return response.ok;
+    } catch {
+      return words.includes(word);
     }
+  }, []);
+
+  const updateLetterStatuses = useCallback((attempt: Attempt) => {
+    setLetterStatuses((prev) => {
+      const newStatuses = { ...prev };
+      attempt.word.split("").forEach((letter, index) => {
+        const currentStatus = newStatuses[letter];
+        const newStatus = attempt.result[index];
+
+        if (
+          !currentStatus ||
+          currentStatus === "default" ||
+          (currentStatus === "gray" &&
+            (newStatus === "yellow" || newStatus === "green")) ||
+          (currentStatus === "yellow" && newStatus === "green")
+        ) {
+          newStatuses[letter] = newStatus;
+        }
+      });
+      return newStatuses;
+    });
+  }, []);
+
+  const showTemporaryError = (message: string) => {
+    setError(message);
+    setShowError(true);
+    setTimeout(() => {
+      setShowError(false);
+      setError("");
+    }, 2000); // Hide after 2 seconds
   };
+
+  const handleEnter = useCallback(async () => {
+    if (currentAttempt.some((letter) => letter === "")) {
+      showTemporaryError("Please fill all boxes");
+      return;
+    }
+
+    const word = currentAttempt.join("");
+    const isValid = await isValidWord(word);
+
+    if (!isValid) {
+      showTemporaryError("Not a valid word!");
+      return;
+    }
+
+    const result = currentAttempt.map((letter: string, index: number) => {
+      if (letter === wordToGuess[index]) {
+        return "green";
+      } else if (wordToGuess.includes(letter)) {
+        return "yellow";
+      } else {
+        return "gray";
+      }
+    });
+
+    const newAttempt = { word, result };
+    setAttempts((prev) => [...prev, newAttempt]);
+    updateLetterStatuses(newAttempt);
+    setCurrentAttempt(Array(5).fill(""));
+    setCurrentBox(0);
+    setError("");
+    setShowError(false);
+
+    if (result.every((color) => color === "green")) {
+      setGameOver(true);
+    } else if (attempts.length + 1 >= maxAttempts) {
+      setGameOver(true);
+    }
+  }, [
+    currentAttempt,
+    wordToGuess,
+    attempts.length,
+    isValidWord,
+    updateLetterStatuses,
+  ]);
+
+  const handleKeyPress = useCallback(
+    (e: KeyboardEvent) => {
+      if (gameOver || !showGame) return;
+
+      // Ignore if Ctrl, Alt, or Meta is pressed (allow browser shortcuts)
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        handleBackspace();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleEnter();
+      } else if (/^[A-Za-z]$/.test(e.key) && currentBox < 5) {
+        e.preventDefault();
+        handleLetterInput(e.key.toUpperCase());
+      }
+    },
+    [
+      gameOver,
+      currentBox,
+      handleBackspace,
+      handleEnter,
+      handleLetterInput,
+      showGame,
+    ]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [handleKeyPress]);
+
+  const toggleDarkMode = useCallback(() => {
+    setDarkMode((prev) => !prev);
+  }, []);
+
+  // Style utilities
+  const getBaseStyles = useMemo(
+    () => ({
+      container: `min-h-screen flex flex-col justify-center items-center ${
+        darkMode ? "bg-zinc-900 text-white" : "bg-gray-100 text-black"
+      } p-4`,
+      button: `${
+        darkMode
+          ? "bg-orange-500 hover:bg-orange-600 text-white"
+          : "bg-blue-500 hover:bg-blue-600 text-white"
+      } transition-colors`,
+      actionButton: `${
+        "bg-gradient-to-r from-orange-600 to-pink-600 hover:from-orange-700 hover:to-pink-700 text-white" +
+        " transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95 font-medium"
+      }`,
+      tile: (color: string) => {
+        const base =
+          "flex justify-center items-center w-12 h-12 rounded-md text-white text-xl font-bold transition-colors";
+        switch (color) {
+          case "green":
+            return `${base} bg-green-500`;
+          case "yellow":
+            return `${base} bg-yellow-500`;
+          case "gray":
+            return `${base} bg-gray-500`;
+          default:
+            return `${base} bg-transparent`;
+        }
+      },
+      box: (index: number, letter: string, isCurrentAttempt: boolean) => {
+        const base =
+          "flex justify-center items-center w-12 h-12 rounded-md border-2 text-xl font-bold transition-all";
+        if (isCurrentAttempt) {
+          return `${base} ${darkMode ? "bg-zinc-800" : "bg-gray-200"} ${
+            letter
+              ? "border-gray-400"
+              : currentBox === index
+              ? "border-gray-400 border-2 animate-pulse"
+              : "border-gray-300"
+          }`;
+        }
+        return `${base} ${
+          darkMode ? "bg-zinc-800" : "bg-gray-200"
+        } border-gray-300`;
+      },
+      key: (letter: string) => {
+        // Slightly darker color for Enter and Backspace
+        const isSpecial = letter === "ENTER" || letter === "BACKSPACE";
+        const status = letterStatuses[letter];
+        if (!isSpecial && status && status !== "default") {
+          let color = "";
+          if (status === "green") color = "bg-green-500";
+          else if (status === "yellow") color = "bg-yellow-500";
+          else if (status === "gray") color = "bg-gray-700";
+          return `w-10 h-12 flex items-center justify-center rounded-md font-bold text-base text-white my-0.5 mx-1 select-none transition-colors cursor-pointer ${color}`;
+        }
+        const base = `${
+          isSpecial ? "bg-gray-700" : "bg-gray-500"
+        } w-10 h-12 flex items-center justify-center rounded-md font-bold text-base text-white my-0.5 mx-1 select-none transition-colors cursor-pointer`;
+        return base;
+      },
+    }),
+    [darkMode, currentBox, letterStatuses]
+  );
+
+  // Memoize game over message
+  const gameOverMessage = useMemo(() => {
+    if (!gameOver) return null;
+    return attempts[attempts.length - 1].result.every(
+      (color) => color === "green"
+    )
+      ? "Congratulations! You won!"
+      : `Game Over! The word was ${wordToGuess}`;
+  }, [gameOver, attempts, wordToGuess]);
 
   return (
-    <ThemeContext.Provider value={{ isDarkMode, toggleTheme: () => {} }}>
-      <GlobalStyles isDarkMode={isDarkMode} />
-      <div
-        className={`min-h-screen ${
-          isDarkMode ? "bg-slate-900" : "bg-gray-100"
-        }`}
+    <div
+      className={getBaseStyles.container + " min-h-screen flex flex-col"}
+      tabIndex={0}
+    >
+      {/* Header */}
+      <header
+        className={`w-full flex items-center justify-between px-4 py-3 z-20`}
       >
-        <header
-          className={`sticky top-0 z-40 ${
-            isDarkMode
-              ? "bg-slate-800 shadow-lg shadow-slate-900/50"
-              : "bg-white shadow-md"
-          }`}
-        >
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <h1
-              className={`text-2xl font-bold ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}
+        <div className="flex-1 flex items-center gap-2 min-w-[180px]">
+          {showGame && (
+            <button
+              onClick={() => setShowGame(false)}
+              className={`px-4 py-2 rounded-lg ${getBaseStyles.actionButton} flex items-center gap-1.5 cursor-pointer`}
             >
-              <span className="text-blue-600">Confess</span>IT
+              <span className="text-lg">←</span> Back to Home
+            </button>
+          )}
+        </div>
+        <div className="flex-1 flex justify-center">
+          <span className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent select-none">
+            Wordle Game
+          </span>
+        </div>
+        <div className="flex-1 flex items-center justify-end gap-2 min-w-[180px]">
+          <button
+            onClick={() => setShowInstructions(true)}
+            className="mr-1 w-10 h-10 rounded-full shadow-md border-2 border-transparent bg-gradient-to-br from-orange-400 to-pink-400 text-white hover:from-orange-500 hover:to-pink-500 focus-visible:ring-2 focus-visible:ring-pink-400 transition-all duration-200 flex items-center justify-center cursor-pointer"
+            aria-label="Show instructions"
+          >
+            <span className="text-2xl font-extrabold drop-shadow-sm">?</span>
+          </button>
+          <button
+            onClick={toggleDarkMode}
+            className={`p-2 rounded-full ${getBaseStyles.button} hover:scale-105 transition-transform cursor-pointer`}
+            aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}
+          >
+            {darkMode ? (
+              // Sun icon for light mode
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-6 h-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.95 7.07l-1.41-1.41M6.34 6.34L4.93 4.93m12.02 0l-1.41 1.41M6.34 17.66l-1.41 1.41"
+                />
+              </svg>
+            ) : (
+              // Moon icon for dark mode
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-6 h-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Instructions Modal */}
+      {showInstructions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div
+            className={`${
+              darkMode ? "bg-zinc-900 text-white" : "bg-white text-gray-900"
+            } rounded-xl shadow-2xl p-6 max-w-lg w-full relative animate-error-pop`}
+          >
+            <button
+              onClick={() => setShowInstructions(false)}
+              className={`absolute top-3 right-3 ${
+                darkMode
+                  ? "text-gray-400 hover:text-white"
+                  : "text-gray-400 hover:text-gray-700"
+              } text-2xl font-bold focus:outline-none cursor-pointer`}
+              aria-label="Close instructions"
+            >
+              ×
+            </button>
+            <h2 className="text-2xl font-bold mb-4 text-center">How to Play</h2>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <p className="text-lg">
+                  Guess the word in 6 tries. Each guess must be a valid 5-letter
+                  word.
+                </p>
+                <div className="flex space-x-2">
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-green-500 text-white text-xl font-bold">
+                    W
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    O
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    R
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    D
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    S
+                  </div>
+                </div>
+                <p className="text-sm text-gray-400">
+                  W is in the word and in the correct spot
+                </p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex space-x-2">
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    P
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-yellow-500 text-white text-xl font-bold">
+                    I
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    L
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    L
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    S
+                  </div>
+                </div>
+                <p className="text-sm text-gray-400">
+                  I is in the word but in the wrong spot
+                </p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex space-x-2">
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    V
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    A
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    G
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    U
+                  </div>
+                  <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                    E
+                  </div>
+                </div>
+                <p className="text-sm text-gray-400">
+                  None of these letters are in the word
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 w-full flex flex-col items-center justify-center">
+        {!showGame ? (
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            <h1 className="text-5xl font-bold mb-8 text-center bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">
+              Welcome to Wordle
             </h1>
 
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                className="rounded-full"
-                onClick={() =>
-                  toast.add({
-                    id: `toast-${Date.now()}`,
-                    type: "info",
-                    message: "Theme switcher coming soon!",
-                  })
-                }
-              >
-                {isDarkMode ? <EyeOff size={20} /> : <Eye size={20} />}
-              </Button>
-              <div
-                className={`flex items-center gap-2 px-3 py-2 rounded-full ${
-                  isDarkMode ? "bg-slate-700" : "bg-gray-200"
-                }`}
-              >
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                  {currentUser.username.charAt(0).toUpperCase()}
-                </div>
-                <span
-                  className={`text-sm font-medium ${
-                    isDarkMode ? "text-white" : "text-gray-900"
-                  }`}
-                >
-                  {currentUser.username}
-                </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold mb-4">Game Rules</h2>
+                <ul className="space-y-4 text-lg">
+                  <li>• You have 6 attempts to guess the 5-letter word</li>
+                  <li>• Each guess must be a valid English word</li>
+                  <li>
+                    • After each guess, the tiles will change color to show how
+                    close you are
+                  </li>
+                  <li>
+                    • You can use the on-screen keyboard or your physical
+                    keyboard
+                  </li>
+                  <li>• Press Enter to submit your guess</li>
+                  <li>• Press Backspace to delete letters</li>
+                </ul>
               </div>
+
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold mb-4">How to Play</h2>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <p className="text-lg">
+                      Guess the word in 6 tries. Each guess must be a valid
+                      5-letter word.
+                    </p>
+                    <div className="flex space-x-2">
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-green-500 text-white text-xl font-bold">
+                        W
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        O
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        R
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        D
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        S
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      W is in the word and in the correct spot
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex space-x-2">
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        P
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-yellow-500 text-white text-xl font-bold">
+                        I
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        L
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        L
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        S
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      I is in the word but in the wrong spot
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex space-x-2">
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        V
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        A
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        G
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        U
+                      </div>
+                      <div className="flex justify-center items-center w-12 h-12 rounded-md bg-gray-500 text-white text-xl font-bold">
+                        E
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      None of these letters are in the word
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <button
+                onClick={() => setShowGame(true)}
+                className={`px-5 py-2.5 text-lg rounded-lg ${getBaseStyles.actionButton} transform hover:scale-105 transition-transform cursor-pointer`}
+              >
+                Start Playing
+              </button>
             </div>
           </div>
-        </header>
-
-        <main className="container mx-auto px-4 py-8">
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Main Content */}
-            <div className="lg:w-2/3">
-              {/* Current time display */}
-              <div
-                className={`mb-6 p-4 rounded-xl text-center ${
-                  isDarkMode ? "bg-slate-800" : "bg-white"
-                } shadow-md border-l-4 border-blue-500`}
-              >
-                <p
-                  className={`text-sm ${
-                    isDarkMode ? "text-slate-300" : "text-gray-600"
-                  }`}
-                >
-                  Local Time:{" "}
-                  <span className="font-semibold">{currentLocalTime}</span>
-                </p>
-              </div>
-
-              <div
-                className={`flex justify-between items-center mb-6 p-4 rounded-xl ${
-                  isDarkMode ? "bg-slate-800" : "bg-white"
-                } shadow-md`}
-              >
-                <h2
-                  className={`text-xl font-semibold ${
-                    isDarkMode ? "text-white" : "text-gray-900"
-                  }`}
-                >
-                  {activeTab === "all" ? "Confessions" : "Popular Confessions"}
-                </h2>
-                <Button onClick={() => setShowForm(true)} variant="primary">
-                  Share Your Confession
-                </Button>
-              </div>
-
-              {/* Tab Navigation */}
-              <div className="flex mb-6">
-                <Button
-                  onClick={() => setActiveTab("all")}
-                  variant={activeTab === "all" ? "primary" : "ghost"}
-                  className="rounded-r-none"
-                >
-                  All Confessions
-                </Button>
-                <Button
-                  onClick={() => setActiveTab("popular")}
-                  variant={activeTab === "popular" ? "primary" : "ghost"}
-                  className="rounded-l-none"
-                >
-                  Popular Confessions
-                </Button>
-              </div>
-
-              {/* Confession Feed */}
-              <div className="space-y-6">
-                <AnimatePresence>
-                  {activeTab === "all" &&
-                    (confessions.length > 0 ? (
-                      confessions.map((confession) => (
-                        <ConfessionCard
-                          key={confession.id}
-                          confession={confession}
-                          onClick={() => setSelectedConfession(confession)}
-                          isDarkMode={isDarkMode}
-                        />
-                      ))
-                    ) : (
-                      <EmptyState
-                        message="No confessions yet. Be the first to share!"
-                        buttonText="Share Your Confession"
-                        onClick={() => setShowForm(true)}
-                        isDarkMode={isDarkMode}
+        ) : (
+          <>
+            {showError && (
+              <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50">
+                <div className="animate-error-pop bg-white/90 dark:bg-zinc-800/90 rounded-xl shadow-2xl backdrop-blur-md px-8 py-4 flex items-center gap-4 border-t-4 border-red-500 min-w-[260px] max-w-xs mx-auto">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="w-7 h-7 text-red-500"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        fill="none"
                       />
-                    ))}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                  {activeTab === "popular" &&
-                    (popularConfessions.length > 0 ? (
-                      popularConfessions.map((confession) => (
-                        <ConfessionCard
-                          key={confession.id}
-                          confession={confession}
-                          onClick={() => setSelectedConfession(confession)}
-                          isPopular
-                          isDarkMode={isDarkMode}
-                        />
-                      ))
-                    ) : (
-                      <EmptyState
-                        message="No popular confessions yet."
-                        isDarkMode={isDarkMode}
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 8v4m0 4h.01"
                       />
-                    ))}
-                </AnimatePresence>
-              </div>
-            </div>
-
-            {/* Sidebar */}
-            {!isMobile && (
-              <div className="lg:w-1/3">
-                <div
-                  className={`sticky top-24 p-6 rounded-xl shadow-lg ${
-                    isDarkMode
-                      ? "bg-slate-800 border border-slate-700"
-                      : "bg-white border border-gray-200"
-                  }`}
-                >
-                  <h2
-                    className={`text-lg font-semibold mb-4 ${
-                      isDarkMode ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    Today's Confession Stats
-                  </h2>
-                  <div className="space-y-4">
-                    <div
-                      className={`p-3 rounded-lg ${
-                        isDarkMode ? "bg-slate-750" : "bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                          <MessageCircle size={20} className="text-blue-500" />
-                        </div>
-                        <div>
-                          <p
-                            className={`text-sm ${
-                              isDarkMode ? "text-slate-400" : "text-gray-500"
-                            }`}
-                          >
-                            Total Confessions
-                          </p>
-                          <p
-                            className={`text-xl font-semibold ${
-                              isDarkMode ? "text-white" : "text-gray-900"
-                            }`}
-                          >
-                            {confessions.length}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`p-3 rounded-lg ${
-                        isDarkMode ? "bg-slate-750" : "bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                          <Heart size={20} className="text-purple-500" />
-                        </div>
-                        <div>
-                          <p
-                            className={`text-sm ${
-                              isDarkMode ? "text-slate-400" : "text-gray-500"
-                            }`}
-                          >
-                            Total Likes
-                          </p>
-                          <p
-                            className={`text-xl font-semibold ${
-                              isDarkMode ? "text-white" : "text-gray-900"
-                            }`}
-                          >
-                            {confessions.reduce(
-                              (sum, conf) => sum + conf.likes,
-                              0
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`p-3 rounded-lg ${
-                        isDarkMode ? "bg-slate-750" : "bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                          <MessageCircle
-                            size={20}
-                            className="text-emerald-500"
-                          />
-                        </div>
-                        <div>
-                          <p
-                            className={`text-sm ${
-                              isDarkMode ? "text-slate-400" : "text-gray-500"
-                            }`}
-                          >
-                            Total Comments
-                          </p>
-                          <p
-                            className={`text-xl font-semibold ${
-                              isDarkMode ? "text-white" : "text-gray-900"
-                            }`}
-                          >
-                            {confessions.reduce(
-                              (sum, conf) => sum + conf.comments.length,
-                              0
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    </svg>
                   </div>
-
-                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
-                    <h3
-                      className={`text-lg font-semibold mb-4 ${
-                        isDarkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      Most Active User
-                    </h3>
-                    <div
-                      className={`p-3 rounded-lg ${
-                        isDarkMode ? "bg-slate-750" : "bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                          {currentUser.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p
-                            className={`font-medium ${
-                              isDarkMode ? "text-white" : "text-gray-900"
-                            }`}
-                          >
-                            {currentUser.username}
-                          </p>
-                          <p
-                            className={`text-xs ${
-                              isDarkMode ? "text-slate-400" : "text-gray-500"
-                            }`}
-                          >
-                            {confessions.filter((c) =>
-                              c.comments.some(
-                                (com) => com.author === currentUser.username
-                              )
-                            ).length +
-                              (confessions
-                                .find((c) =>
-                                  c.comments.some(
-                                    (com) => com.author === currentUser.username
-                                  )
-                                )
-                                ?.comments.filter(
-                                  (com) => com.author === currentUser.username
-                                ).length || 0)}{" "}
-                            contributions
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="flex-1 text-center">
+                    <span className="text-base font-semibold text-red-600 dark:text-red-400">
+                      {error}
+                    </span>
                   </div>
                 </div>
+                <style>{`
+                  @keyframes errorPop {
+                    0% { opacity: 0; transform: scale(0.85) translateY(-20px); }
+                    60% { opacity: 1; transform: scale(1.05) translateY(0); }
+                    100% { opacity: 1; transform: scale(1) translateY(0); }
+                  }
+                  .animate-error-pop {
+                    animation: errorPop 0.4s cubic-bezier(0.4,0,0.2,1);
+                  }
+                `}</style>
               </div>
             )}
-          </div>
-        </main>
 
-        {/* Modals */}
-        <AnimatePresence>
-          {selectedConfession && (
-            <ConfessionDetail
-              confession={selectedConfession}
-              onClose={() => setSelectedConfession(null)}
-              onLike={() => handleLike(selectedConfession.id)}
-              onCommentSubmit={(content) =>
-                handleCommentSubmit(selectedConfession.id, content)
-              }
-              currentUser={currentUser}
-              isDarkMode={isDarkMode}
-            />
-          )}
-          {showForm && (
-            <ConfessionForm
-              onSubmit={handleSubmitConfession}
-              onClose={() => setShowForm(false)}
-              isDarkMode={isDarkMode}
-            />
-          )}
-        </AnimatePresence>
+            {/* Game Board */}
+            <div className="mt-8 space-y-2" role="grid" aria-label="Game board">
+              {attempts.map((attempt, index) => (
+                <div key={index} className="flex space-x-2" role="row">
+                  {attempt.word.split("").map((letter, letterIndex) => (
+                    <div
+                      key={letterIndex}
+                      className={getBaseStyles.tile(
+                        attempt.result[letterIndex]
+                      )}
+                      role="gridcell"
+                      aria-label={`${letter} - ${attempt.result[letterIndex]}`}
+                    >
+                      {letter}
+                    </div>
+                  ))}
+                </div>
+              ))}
 
-        {/* Footer */}
-        <footer
-          className={`py-8 ${
-            isDarkMode ? "bg-slate-800" : "bg-gray-100"
-          } border-t ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}
-        >
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="mb-4 md:mb-0">
-                <h2 className="text-lg font-bold">
-                  <span className="text-blue-600">Confess</span>IT
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Share your thoughts anonymously
-                </p>
+              {/* Current attempt row */}
+              {maxAttempts > attempts.length && (
+                <div className="flex space-x-2" role="row">
+                  {currentAttempt.map((letter, index) => (
+                    <div
+                      key={index}
+                      className={getBaseStyles.box(index, letter, true)}
+                      role="gridcell"
+                      aria-label={letter ? letter : `Empty box ${index + 1}`}
+                    >
+                      {letter}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty rows */}
+              {Array.from({ length: maxAttempts - attempts.length - 1 }).map(
+                (_, rowIndex) => (
+                  <div key={rowIndex} className="flex space-x-2" role="row">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className={getBaseStyles.box(index, "", false)}
+                        role="gridcell"
+                        aria-label={`Empty box ${index + 1} in row ${
+                          rowIndex + 1
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
+
+            {gameOver && (
+              <div className="text-center mt-4">
+                <h2 className="text-2xl font-bold mb-2">{gameOverMessage}</h2>
+                <button
+                  onClick={() => window.location.reload()}
+                  className={`px-6 py-2.5 rounded-lg ${getBaseStyles.actionButton}`}
+                >
+                  Play Again
+                </button>
               </div>
-              <div className="flex flex-wrap gap-4">
-                <Button variant="ghost" size="sm">
-                  Privacy Policy
-                </Button>
-                <Button variant="ghost" size="sm">
-                  Terms of Service
-                </Button>
-                <Button variant="ghost" size="sm">
-                  Contact Us
-                </Button>
+            )}
+
+            {/* Virtual Keyboard */}
+            <div
+              className="mt-8 space-y-2"
+              role="group"
+              aria-label="Virtual keyboard"
+            >
+              {/* First two rows */}
+              {keyboardRows.slice(0, 2).map((row, rowIndex) => (
+                <div key={rowIndex} className="flex justify-center">
+                  {row.map((letter) => (
+                    <button
+                      key={letter}
+                      className={getBaseStyles.key(letter)}
+                      onClick={() => !gameOver && handleLetterInput(letter)}
+                      aria-label={letter}
+                      aria-pressed={letterStatuses[letter] !== "default"}
+                    >
+                      {letter}
+                    </button>
+                  ))}
+                </div>
+              ))}
+              {/* Third row with Enter and Backspace */}
+              <div className="flex justify-center">
+                <button
+                  className={getBaseStyles.key("ENTER") + " w-16"}
+                  onClick={handleEnter}
+                  aria-label="Enter"
+                  disabled={gameOver}
+                >
+                  <span className="font-bold text-xs">ENTER</span>
+                </button>
+                {keyboardRows[2].map((letter) => (
+                  <button
+                    key={letter}
+                    className={getBaseStyles.key(letter)}
+                    onClick={() => !gameOver && handleLetterInput(letter)}
+                    aria-label={letter}
+                    aria-pressed={letterStatuses[letter] !== "default"}
+                  >
+                    {letter}
+                  </button>
+                ))}
+                <button
+                  className={getBaseStyles.key("BACKSPACE") + " w-10"}
+                  onClick={handleBackspace}
+                  aria-label="Backspace"
+                  disabled={gameOver}
+                >
+                  {/* Standard backspace icon */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-5 h-5"
+                  >
+                    <path d="M20 7v10a2 2 0 0 1-2 2H8a2 2 0 0 1-1.7-.9l-4-6a2 2 0 0 1 0-2l4-6A2 2 0 0 1 8 5h10a2 2 0 0 1 2 2z" />
+                    <line x1="12" y1="9" x2="15" y2="12" />
+                    <line x1="15" y1="9" x2="12" y2="12" />
+                  </svg>
+                </button>
               </div>
             </div>
-            <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-              <p>
-                © {new Date().getFullYear()} ConfessIT. All rights reserved.
-              </p>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </ThemeContext.Provider>
+          </>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer
+        className={`w-full text-center py-4 ${
+          darkMode
+            ? "bg-zinc-900/80 text-gray-400"
+            : "bg-white/80 text-gray-500"
+        } text-sm shadow-inner backdrop-blur-md`}
+      >
+        © {new Date().getFullYear()} Wordle Game. All rights reserved.
+      </footer>
+    </div>
   );
-}
-
-export default ConfessionFeed;
-// Zod Schema
-export const Schema = {
-  commentary: "",
-  template: "nextjs-developer",
-  title: "",
-  description: "",
-  additional_dependencies: ["framer-motion"],
-  has_additional_dependencies: true,
-  install_dependencies_command: "npm install framer-motion",
-  port: 3000,
-  file_path: "pages/index.tsx",
-  code: "<see code above>",
 };
+
+export default WordleGame;

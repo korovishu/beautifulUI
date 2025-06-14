@@ -1,0 +1,24 @@
+easy - 
+Hey there! I'm interested in a cool app to help me manage my smart home devices. I want something that looks nice and is easy to use. It should work on my phone and computer. Can you create an app made with Next.js and Typescript, and should be self-contained in a single .tsx file.
+
+title - Smart Home Dashboard
+
+Description -
+A modern, responsive smart home dashboard built with React, offering real-time control of lights, thermostats, and sensors. Features include energy usage charts, device management, theme toggles, and an accessible, mobile-friendly UI.
+
+
+Commentary -
+Designed a clean, single-page React app with context-based theme control, reusable components, and real-time device interaction. Integrated Recharts for energy stats, searchable device lists, and ARIA-friendly, responsive layouts with optimized performance.
+
+Rewrite changes -
+I tackled several issues with the original component, like dark mode failures and font inconsistencies. By using React Context with localStorage, I ensured theme persistence. I applied inline styles and explicit font declarations to fix styling issues. Now, the component is self-contained, with dynamic styling that adapts to theme changes, making it robust and consistent across different environments.
+
+https://site.homehabit.app/
+https://www.loxone.com/enus/products/apps/
+
+Justification - 
+I’m really pleased with the visual design of my project. I consistently used the Outfit font, matched the toggle switches perfectly, and selected colors for dark mode that offer clear contrast, earning a 5/5 in this area.
+
+In terms of code quality, I managed the theme using React Context, optimized rendering with React.memo, and wrote clean, well-typed, and organized TypeScript code, which also earned a 5/5.
+
+For implementation, I achieved full functionality by using localStorage to save the theme. However, I see room for improvement in enhancing toggle animations and expanding the range of device categories, which is why I rated this area a 4/5.

@@ -1,21 +1,22 @@
+// TODO -  Add dark mode
+
 Medium - 
 I want a simplified version of LinkedIn. I want a home page where there are posts to like and comment on, a profile page with name, location, bio, and a photo with an edit button, and a form to type and post a new post. Please build it using Next.js and TypeScript in a single .tsx file.
 
 Hard - 
-I want a simplified version of LinkedIn. I want a home page where there are posts to like and comment on, a profile page with name, location, bio, and a photo with an edit button, and a form to type and post a new post. An avatar should be there on the top right of the header with an edit icon it, clicking on which should open a popup to edit the profile. Please build it using Next.js and TypeScript in a single .tsx file.
+I want a simplified version of LinkedIn. It should have three tabs, Home Feed, Profile Page, My Network Page. The Profile Page should have my name, location, bio, about, and the my posts. I should be able to edit my profile details using an "Edit Profile" button in the Profile Page. The home Page should show the posts to like and comment on. It should also have my information on the left and news on the right. In the My Network Page, I should be able to connect with other users. Only the posts from connected users should be visible in the home Page. I should be able to edit/delete my posts. I should be able to click on other user's name to view their profile. Please build it using Next.js and TypeScript in a single .tsx file.
 
 Title-
 Simple Linkedin
 
 Description - 
-A simple LinkedIn-inspired app that allows users to post, comment, and like posts, along with a personal page containing basic information and a profile picture.
+A simple LinkedIn-inspired app that has a Home Feed (showing posts from connected users), a Profile Page (with editable user details and personal posts), and a My Network Page (to connect with other users).
 
 Commentary - 
-I started by creating the page structure using Next.js and Tailwind, then added state management for posts and comments, a modal for editing data and publishing new posts, and support for night and light modes.
+To build this app, I set up a single-page Next.js application with three main tabs: Home, Profile, and My Network. I defined TypeScript interfaces for users, posts, and connections to manage the data structure. On the Profile page, I displayed my details and posts, with options to edit both. Then built the My Network page to browse and connect with other users. Finally, built the Home page to show posts only from users I was connected with, along with like and comment features, and side sections for my info and news.
 
-
-rewrite changes - 
-The model response had a very rudimentary and outdated interface. While it met some functional requirements, it lacked a modern design, dark mode compatibility, or responsiveness. It felt very bland and unrealistic for an app like LinkedIn. In the redesign, I brought the design up to speed with Tailwind CSS, added more advanced interactions like likes and comments, and made the profile editable, with dark mode compatibility. The entire code is in a .tsx file and TypeScript and covers all of the prompt requirements perfectly.
+Rewrite changes - 
+The model response had a very rudimentary and outdated interface. While it met some functional requirements, it lacked a modern design, or responsiveness. It felt very bland and unrealistic for an app like LinkedIn. In the redesign, I brought the design up to speed with Tailwind CSS, added more advanced interactions like likes and comments, and made the profile editable. The entire code is in a .tsx file and TypeScript and covers all of the prompt requirements perfectly.
 
 https://www.linkedin.com/
 

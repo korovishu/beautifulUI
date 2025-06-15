@@ -1,1939 +1,871 @@
 "use client";
+import { useState, useEffect, FC, FormEvent, ChangeEvent } from 'react';
 
-import type React from "react";
+// --- TYPE DEFINITIONS ---
+// These types define the data structure for our application
+type User = {
+  id: number;
+  name: string;
+  location: string;
+  bio: string;
+  about: string;
+  avatar: string;
+  connections: number[];
+  coverPhoto: string;
+};
 
-import { useState, useEffect } from "react";
-import Head from "next/head";
-import {
-  FiMenu,
-  FiSearch,
-  FiChevronDown,
-  FiMoreHorizontal,
-  FiX,
-} from "react-icons/fi";
-import { IoLanguage } from "react-icons/io5";
+type Comment = {
+  id: number;
+  userId: number;
+  text: string;
+};
 
-export default function WikipediaReplica() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isContentsVisible, setIsContentsVisible] = useState(true);
-  const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
-  const [textSize, setTextSize] = useState("standard");
-  const [width, setWidth] = useState("standard");
-  const [colorTheme, setColorTheme] = useState("automatic");
-  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const toggleContents = () => {
-    setIsContentsVisible(!isContentsVisible);
+type Post = {
+  id: number;
+  userId: number;
+  content: string;
+  likes: number[]; // Array of user IDs who liked the post
+  comments: Comment[];
+  media?: {
+    type: 'image' | 'video';
+    url: string;
   };
+};
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert(`Searching for: ${searchQuery}`);
-  };
+type Page = 'Home' | 'Profile' | 'Network';
 
-  useEffect(() => {
-    // Apply text size
-    let fontSize = "0.875rem";
-    if (textSize === "small") fontSize = "0.8125rem";
-    if (textSize === "large") fontSize = "1rem";
-    document.documentElement.style.setProperty("--text-size", fontSize);
+// --- SVG ICONS ---
+// Reusable SVG icons for a consistent look and feel
+const HomeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
+);
+const NetworkIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z" /></svg>
+);
+const UserIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
+);
+const LikeIcon = ({ filled }: { filled: boolean }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-5 h-5 transition-transform duration-200 ease-in-out ${filled ? 'text-red-500 scale-110' : 'text-gray-500'}`}>
+    <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+  </svg>
+);
+const CommentIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-gray-500"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18zM18 14H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" /></svg>
+);
+const EditIcon = ({className = "w-5 h-5"}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
+);
+const PhotoIcon = ({className = "w-6 h-6 text-blue-500"}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+);
+const VideoIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-green-500"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+);
 
-    // Apply width
-    let contentWidth = "100%";
-    if (width === "standard") contentWidth = "100%";
-    if (width === "wide") contentWidth = "120%";
-    document.documentElement.style.setProperty("--content-width", contentWidth);
 
-    // Apply color theme
-    let bgColor = "#ffffff";
-    let textColor = "#202122";
-    let linkColor = "#0645ad";
-    let visitedColor = "#0b0080";
+// --- MOCK DATA ---
+const initialUsers: User[] = [
+  { id: 1, name: 'Alex Doe', location: 'San Francisco, CA', bio: 'Software Engineer at TechCorp. Passionate about AI and building scalable systems.', about: 'Experienced software engineer with a focus on AI and machine learning. Currently working on building scalable systems at TechCorp. Previously worked at Google and Microsoft.', avatar: 'https://placehold.co/100x100/EFEFEF/333?text=AD', connections: [2, 3], coverPhoto: 'https://t3.ftcdn.net/jpg/07/05/22/98/360_F_705229898_6MV4F9FPWLFzz1pWVmr3BNnls9s8b1x4.jpg' },
+  { id: 2, name: 'Jane Smith', location: 'New York, NY', bio: 'Product Manager at Innovate Inc. Focused on user-centric design.', about: 'Product Manager with 5+ years of experience in tech. Passionate about creating user-centric products that solve real problems. Previously led product teams at Amazon and Facebook.', avatar: 'https://placehold.co/100x100/D4EDDA/333?text=JS', connections: [1], coverPhoto: 'https://t3.ftcdn.net/jpg/07/05/22/98/360_F_705229898_6MV4F9FPWLFzz1pWVmr3BNnls9s8b1x4.jpg' },
+  { id: 3, name: 'Sam Wilson', location: 'Chicago, IL', bio: 'UX/UI Designer at Creative Solutions.', about: 'Creative UX/UI designer with a background in graphic design. Specializes in creating intuitive and beautiful user interfaces. Worked with various startups and established companies.', avatar: 'https://placehold.co/100x100/C5DFFF/333?text=SW', connections: [1], coverPhoto: 'https://t3.ftcdn.net/jpg/07/05/22/98/360_F_705229898_6MV4F9FPWLFzz1pWVmr3BNnls9s8b1x4.jpg' },
+  { id: 4, name: 'Maria Garcia', location: 'Austin, TX', bio: 'Data Scientist at DataDriven Co.', about: 'Data scientist with expertise in machine learning and statistical analysis. Currently working on predictive analytics and recommendation systems. PhD in Computer Science from MIT.', avatar: 'https://placehold.co/100x100/FFF3C5/333?text=MG', connections: [], coverPhoto: 'https://t3.ftcdn.net/jpg/07/05/22/98/360_F_705229898_6MV4F9FPWLFzz1pWVmr3BNnls9s8b1x4.jpg' },
+];
 
-    if (colorTheme === "dark") {
-      bgColor = "#222";
-      textColor = "#ddd";
-      linkColor = "#6699ff";
-      visitedColor = "#99b3ff";
-    }
+const initialPosts: Post[] = [
+  { id: 1, userId: 1, content: 'Excited to share that our team just launched a new feature! It was a huge effort, and I\'m so proud of what we accomplished. #Tech #AI', likes: [2, 3], comments: [{ id: 1, userId: 2, text: 'Congratulations, Alex!' }] },
+  { id: 2, userId: 2, content: 'Just published a blog post on the future of product management. Would love to hear your thoughts! #Product #Innovation', likes: [1], comments: [] },
+  { id: 3, userId: 3, content: 'Here are steps for better UX design process. Hope this helps fellow designers out there! #UX #Design', likes: [1, 2], comments: [{ id: 2, userId: 1, text: 'Great tips, Sam!' }], media: { type: 'image', url: 'https://media.geeksforgeeks.org/wp-content/uploads/20240515122624/UX-design-process-(infograph)-copy.webp' } },
+  { id: 4, userId: 4, content: 'Deep diving into machine learning models this week. The possibilities are endless!', likes: [], comments: [] },
+];
 
-    document.documentElement.style.setProperty("--bg-color", bgColor);
-    document.documentElement.style.setProperty("--text-color", textColor);
-    document.documentElement.style.setProperty("--link-color", linkColor);
-    document.documentElement.style.setProperty("--visited-color", visitedColor);
-  }, [textSize, width, colorTheme]);
+
+// --- HELPER FUNCTION ---
+const findUserById = (id: number, users: User[]): User | undefined => users.find(u => u.id === id);
+
+
+// --- COMPONENTS ---
+
+// Header Component
+const Header: FC<{
+  user: User;
+  onNavigate: (page: Page) => void;
+  activePage: Page;
+}> = ({ user, onNavigate, activePage }) => {
+  const NavLink: FC<{ page: Page; icon: JSX.Element; text: string }> = ({ page, icon, text }) => (
+      <button onClick={() => onNavigate(page)} className={`flex flex-col items-center justify-center text-xs w-20 h-full transition-colors ${activePage === page ? 'text-black border-b-2 border-black' : 'text-gray-600 hover:text-black'}`}>
+          {icon}
+          <span className="hidden sm:block">{text}</span>
+      </button>
+  );
 
   return (
-    <>
-      <Head>
-        <title>Ancient Roman pottery - Wikipedia</title>
-        <link
-          rel="stylesheet"
-          href="https://en.wikipedia.org/w/load.php?lang=en&modules=ext.cite.styles%7Cext.echo.styles.badge%7Cext.uls.interlanguage%7Cext.visualEditor.desktopArticleTarget.noscript%7Cext.wikimediaBadges%7Cjquery.makeCollapsible.styles%7Cskins.vector.styles.legacy%7Cwikibase.client.init&only=styles&skin=vector"
-        />
-      </Head>
-
-      <div className="wikipedia-container">
-        {isMenuOpen && (
-          <div
-            className="mobile-overlay"
-            onClick={() => setIsMenuOpen(false)}
-          />
-        )}
-        <div className={`sidebar ${isMenuOpen ? "open" : ""}`}>
-          <nav
-            className="sidebar-navigation"
-            role="navigation"
-            aria-label="Site navigation"
-          >
-            <div className="sidebar-section">
-              <div className="sidebar-heading">Navigation</div>
-              <ul>
-                <li>
-                  <a href="#" aria-label="Go to main page">
-                    Main page
-                  </a>
-                </li>
-                <li>
-                  <a href="#" aria-label="Browse contents">
-                    Contents
-                  </a>
-                </li>
-                <li>
-                  <a href="#" aria-label="View current events">
-                    Current events
-                  </a>
-                </li>
-                <li>
-                  <a href="#" aria-label="View random article">
-                    Random article
-                  </a>
-                </li>
-                <li>
-                  <a href="#" aria-label="About Wikipedia">
-                    About Wikipedia
-                  </a>
-                </li>
-                <li>
-                  <a href="#" aria-label="Contact us">
-                    Contact us
-                  </a>
-                </li>
-                <li>
-                  <a href="#" aria-label="Donate to Wikipedia">
-                    Donate
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div className="sidebar-section">
-              <div className="sidebar-heading">Contribute</div>
-              <ul>
-                <li>
-                  <a href="#">Help</a>
-                </li>
-                <li>
-                  <a href="#">Learn to edit</a>
-                </li>
-                <li>
-                  <a href="#">Community portal</a>
-                </li>
-                <li>
-                  <a href="#">Recent changes</a>
-                </li>
-                <li>
-                  <a href="#">Upload file</a>
-                </li>
-              </ul>
-            </div>
-            <div className="sidebar-section">
-              <div className="sidebar-heading">Tools</div>
-              <ul>
-                <li>
-                  <a href="#">What links here</a>
-                </li>
-                <li>
-                  <a href="#">Related changes</a>
-                </li>
-                <li>
-                  <a href="#">Special pages</a>
-                </li>
-                <li>
-                  <a href="#">Permanent link</a>
-                </li>
-                <li>
-                  <a href="#">Page information</a>
-                </li>
-                <li>
-                  <a href="#">Cite this page</a>
-                </li>
-                <li>
-                  <a href="#">Wikidata item</a>
-                </li>
-              </ul>
-            </div>
-            <div className="sidebar-section">
-              <div className="sidebar-heading">Print/export</div>
-              <ul>
-                <li>
-                  <a href="#">Download as PDF</a>
-                </li>
-                <li>
-                  <a href="#">Printable version</a>
-                </li>
-              </ul>
-            </div>
-            <div className="sidebar-section">
-              <div className="sidebar-heading">In other projects</div>
-              <ul>
-                <li>
-                  <a href="#">Wikimedia Commons</a>
-                </li>
-                <li>
-                  <a href="#">MediaWiki</a>
-                </li>
-                <li>
-                  <a href="#">Meta-Wiki</a>
-                </li>
-                <li>
-                  <a href="#">Wikispecies</a>
-                </li>
-                <li>
-                  <a href="#">Wikibooks</a>
-                </li>
-                <li>
-                  <a href="#">Wikidata</a>
-                </li>
-                <li>
-                  <a href="#">Wikimania</a>
-                </li>
-              </ul>
-            </div>
-            <div className="sidebar-section">
-              <div className="sidebar-heading">Languages</div>
-              <ul>
-                <li>
-                  <a href="#">Deutsch</a>
-                </li>
-                <li>
-                  <a href="#">Español</a>
-                </li>
-                <li>
-                  <a href="#">Français</a>
-                </li>
-                <li>
-                  <a href="#">Italiano</a>
-                </li>
-                <li>
-                  <a href="#">日本語</a>
-                </li>
-                <li>
-                  <a href="#">Nederlands</a>
-                </li>
-                <li>
-                  <a href="#">Polski</a>
-                </li>
-                <li>
-                  <a href="#">Português</a>
-                </li>
-                <li>
-                  <a href="#">Русский</a>
-                </li>
-                <li>
-                  <a href="#">中文</a>
-                </li>
-              </ul>
-            </div>
+    <header className="bg-white shadow-sm sticky top-0 z-40">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center">
+            <h1 className="text-2xl font-bold text-blue-700 cursor-pointer" onClick={() => onNavigate('Home')}>SimpleLinkedin</h1>
+          </div>
+          <nav className="flex items-center h-full">
+              <NavLink page="Home" icon={<HomeIcon />} text="Home" />
+              <NavLink page="Network" icon={<NetworkIcon />} text="My Network" />
+              <NavLink page="Profile" icon={<UserIcon />} text="Me" />
           </nav>
         </div>
+      </div>
+    </header>
+  );
+};
 
-        <div className="main-content">
-          <div className="mobile-header">
-            <button
-              className="menu-toggle"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label="Toggle navigation menu"
-              aria-expanded={isMenuOpen}
-            >
-              <FiMenu />
-            </button>
-            <div className="mobile-logo">
-              <img
-                src="https://en.wikipedia.org/static/images/mobile/copyright/wikipedia-wordmark-en.svg"
-                alt="Wikipedia"
-              />
-            </div>
-            <button className="mobile-search-icon" aria-label="Search">
-              <FiSearch />
-            </button>
-          </div>
+// Post Creation Component
+const CreatePost: FC<{
+  currentUser: User;
+  onAddPost: (content: string, file: File | null) => void;
+}> = ({ currentUser, onAddPost }) => {
+  const [content, setContent] = useState('');
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-          <header className="header">
-            <div className="header-menu">
-              <button
-                className="menu-toggle"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                aria-label="Toggle navigation menu"
-                aria-expanded={isMenuOpen}
-              >
-                <FiMenu />
-              </button>
-            </div>
-            <div className="header-logo">
-              <a href="#" aria-label="Wikipedia home">
-                <img
-                  src="https://en.wikipedia.org/static/images/project-logos/enwiki.png"
-                  alt="Wikipedia logo"
-                />
-                <div className="header-logo-text">
-                  <div className="header-logo-title">WIKIPEDIA</div>
-                  <div className="header-logo-subtitle">
-                    The Free Encyclopedia
-                  </div>
-                </div>
-              </a>
-            </div>
-            <div className="header-search">
-              <form onSubmit={handleSearch} role="search">
-                <label htmlFor="search-input" className="sr-only">
-                  Search Wikipedia
-                </label>
-                <input
-                  id="search-input"
-                  type="search"
-                  name="search"
-                  placeholder="Search Wikipedia"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search Wikipedia"
-                />
-                <button type="submit" aria-label="Search">
-                  Search
-                </button>
-              </form>
-            </div>
-            <div className="header-user">
-              <a href="#" aria-label="Donate to Wikipedia">
-                Donate
-              </a>
-              <a href="#" aria-label="Create account">
-                Create account
-              </a>
-              <a href="#" aria-label="Log in">
-                Log in
-              </a>
-              <button className="more-menu" aria-label="More options">
-                <FiMoreHorizontal />
-              </button>
-            </div>
-          </header>
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setMediaFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
 
-          <main className="article" role="main">
-            <h1 className="firstHeading">Ancient Roman pottery</h1>
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (content.trim() || mediaFile) {
+      onAddPost(content.trim(), mediaFile);
+      setContent('');
+      setMediaFile(null);
+      setPreviewUrl(null);
+      if(document.getElementById('media-upload')) {
+        (document.getElementById('media-upload') as HTMLInputElement).value = "";
+      }
+    }
+  };
 
-            <div
-              className="language-button"
-              onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-            >
-              <IoLanguage />
-              <span>8 languages</span>
-              <FiChevronDown />
+  const removeMedia = () => {
+    setMediaFile(null);
+    setPreviewUrl(null);
+    if(document.getElementById('media-upload')) {
+        (document.getElementById('media-upload') as HTMLInputElement).value = "";
+    }
+  }
 
-              {isLanguageDropdownOpen && (
-                <div
-                  className="language-dropdown"
-                  role="menu"
-                  aria-label="Language selection"
-                >
-                  <div className="language-dropdown-header">
-                    <span>Languages</span>
-                    <button
-                      onClick={() => setIsLanguageDropdownOpen(false)}
-                      aria-label="Close language menu"
-                    >
-                      <FiX />
-                    </button>
-                  </div>
-                  <ul>
-                    <li>
-                      <a href="#" role="menuitem">
-                        Deutsch
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" role="menuitem">
-                        Español
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" role="menuitem">
-                        Français
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" role="menuitem">
-                        Italiano
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" role="menuitem">
-                        Nederlands
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" role="menuitem">
-                        Polski
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" role="menuitem">
-                        Português
-                      </a>
-                    </li>
-                    <li>
-                      <a href="#" role="menuitem">
-                        Русский
-                      </a>
-                    </li>
-                  </ul>
-                </div>
+  return (
+    <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+      <div className="flex items-start space-x-3">
+        <img src={currentUser.avatar} alt="Current User Avatar" className="h-12 w-12 rounded-full object-cover" />
+        <form onSubmit={handleSubmit} className="w-full">
+          <textarea
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            rows={2}
+            placeholder={`What's on your mind, ${currentUser.name.split(' ')[0]}?`}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+          />
+          {previewUrl && (
+            <div className="mt-3 relative">
+              <button onClick={removeMedia} className="absolute top-2 right-2 bg-black bg-opacity-60 text-white rounded-full p-1 leading-none z-10 hover:bg-opacity-80">&times;</button>
+              {mediaFile?.type.startsWith('image') ? (
+                <img src={previewUrl} alt="Preview" className="rounded-lg max-h-80 w-auto" />
+              ) : (
+                <video src={previewUrl} controls className="rounded-lg max-h-80 w-auto" />
               )}
             </div>
-
-            <nav
-              className="content-navigation"
-              role="navigation"
-              aria-label="Page actions"
-            >
-              <div className="namespaces">
-                <ul>
-                  <li className="selected">
-                    <a href="#">Article</a>
-                  </li>
-                  <li>
-                    <a href="#">Talk</a>
-                  </li>
-                </ul>
-              </div>
-              <div className="views">
-                <ul>
-                  <li className="selected">
-                    <a href="#">Read</a>
-                  </li>
-                  <li>
-                    <a href="#">Edit</a>
-                  </li>
-                  <li>
-                    <a href="#">View history</a>
-                  </li>
-                  <li className="more-dropdown">
-                    <a href="#" onClick={() => {}}>
-                      Tools <FiChevronDown />
-                    </a>
-                  </li>
-                </ul>
-              </div>
-              <div className="appearance-menu">
-                <button onClick={() => setIsAppearanceOpen(!isAppearanceOpen)}>
-                  Appearance <FiChevronDown />
-                </button>
-
-                {isAppearanceOpen && (
-                  <div className="appearance-dropdown">
-                    <div className="appearance-section">
-                      <h3>Text</h3>
-                      <div className="appearance-options">
-                        <label>
-                          <input
-                            type="radio"
-                            name="text-size"
-                            value="small"
-                            checked={textSize === "small"}
-                            onChange={() => setTextSize("small")}
-                          />
-                          <span>Small</span>
-                        </label>
-                        <label>
-                          <input
-                            type="radio"
-                            name="text-size"
-                            value="standard"
-                            checked={textSize === "standard"}
-                            onChange={() => setTextSize("standard")}
-                          />
-                          <span>Standard</span>
-                        </label>
-                        <label>
-                          <input
-                            type="radio"
-                            name="text-size"
-                            value="large"
-                            checked={textSize === "large"}
-                            onChange={() => setTextSize("large")}
-                          />
-                          <span>Large</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="appearance-section">
-                      <h3>Width</h3>
-                      <div className="appearance-options">
-                        <label>
-                          <input
-                            type="radio"
-                            name="width"
-                            value="standard"
-                            checked={width === "standard"}
-                            onChange={() => setWidth("standard")}
-                          />
-                          <span>Standard</span>
-                        </label>
-                        <label>
-                          <input
-                            type="radio"
-                            name="width"
-                            value="wide"
-                            checked={width === "wide"}
-                            onChange={() => setWidth("wide")}
-                          />
-                          <span>Wide</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="appearance-section">
-                      <h3>Color (beta)</h3>
-                      <div className="appearance-options">
-                        <label>
-                          <input
-                            type="radio"
-                            name="color-theme"
-                            value="automatic"
-                            checked={colorTheme === "automatic"}
-                            onChange={() => setColorTheme("automatic")}
-                          />
-                          <span>Automatic</span>
-                        </label>
-                        <label>
-                          <input
-                            type="radio"
-                            name="color-theme"
-                            value="light"
-                            checked={colorTheme === "light"}
-                            onChange={() => setColorTheme("light")}
-                          />
-                          <span>Light</span>
-                        </label>
-                        <label>
-                          <input
-                            type="radio"
-                            name="color-theme"
-                            value="dark"
-                            checked={colorTheme === "dark"}
-                            onChange={() => setColorTheme("dark")}
-                          />
-                          <span>Dark</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </nav>
-
-            <div className="article-info">
-              From Wikipedia, the free encyclopedia
+          )}
+          <div className="flex justify-between items-center mt-3">
+            <div className="flex space-x-4">
+                <input id="media-upload" type="file" accept="image/*,video/*" onChange={handleFileChange} className="hidden" />
+                <label htmlFor="media-upload" className="flex items-center space-x-2 cursor-pointer text-gray-500 hover:text-blue-600 transition-colors">
+                    <PhotoIcon /> <span className='font-medium'>Photo</span>
+                </label>
+                 <label htmlFor="media-upload" className="flex items-center space-x-2 cursor-pointer text-gray-500 hover:text-green-600 transition-colors">
+                    <VideoIcon /> <span className='font-medium'>Video</span>
+                </label>
             </div>
-
-            <div className="article-content">
-              <nav
-                className={`contents ${isContentsVisible ? "" : "collapsed"}`}
-                aria-label="Table of contents"
-              >
-                <div className="contents-header" onClick={toggleContents}>
-                  <span>Contents</span>
-                  <button
-                    className="hide-button"
-                    aria-label={
-                      isContentsVisible
-                        ? "Hide table of contents"
-                        : "Show table of contents"
-                    }
-                    aria-expanded={isContentsVisible}
-                  >
-                    [{isContentsVisible ? "hide" : "show"}]
-                  </button>
-                </div>
-                {isContentsVisible && (
-                  <ol>
-                    <li>
-                      <span>1</span>
-                      <a href="#top">Top</a>
-                    </li>
-                    <li>
-                      <span>2</span>
-                      <a href="#fine-wares">Fine wares</a>
-                      <ol>
-                        <li>
-                          <span>2.1</span>
-                          <a href="#terra-sigillata">
-                            Terra sigillata or red-gloss wares
-                          </a>
-                        </li>
-                        <li>
-                          <span>2.2</span>
-                          <a href="#other-fine-wares">Other fine wares</a>
-                        </li>
-                      </ol>
-                    </li>
-                    <li>
-                      <span>3</span>
-                      <a href="#coarse-wares">Coarse wares</a>
-                      <ol>
-                        <li>
-                          <span>3.1</span>
-                          <a href="#cooking-pots">Cooking pots</a>
-                        </li>
-                        <li>
-                          <span>3.2</span>
-                          <a href="#mortaria">Mortaria</a>
-                        </li>
-                        <li>
-                          <span>3.3</span>
-                          <a href="#amphorae">Amphorae</a>
-                        </li>
-                        <li>
-                          <span>3.4</span>
-                          <a href="#description">Description and function</a>
-                        </li>
-                        <li>
-                          <span>3.5</span>
-                          <a href="#studies">Studies on amphorae</a>
-                        </li>
-                        <li>
-                          <span>3.6</span>
-                          <a href="#production">Production</a>
-                        </li>
-                        <li>
-                          <span>3.7</span>
-                          <a href="#history">History</a>
-                        </li>
-                      </ol>
-                    </li>
-                    <li>
-                      <span>4</span>
-                      <a href="#other-ceramics">Other ceramics</a>
-                      <ol>
-                        <li>
-                          <span>4.1</span>
-                          <a href="#lamps">Lamps</a>
-                        </li>
-                        <li>
-                          <span>4.2</span>
-                          <a href="#terracotta">Terracotta figurines</a>
-                        </li>
-                        <li>
-                          <span>4.3</span>
-                          <a href="#architectural">
-                            Brick and other architectural ceramics
-                          </a>
-                        </li>
-                        <li>
-                          <span>4.4</span>
-                          <a href="#gallery">Gallery</a>
-                        </li>
-                      </ol>
-                    </li>
-                    <li>
-                      <span>5</span>
-                      <a href="#notes">Notes</a>
-                    </li>
-                    <li>
-                      <span>6</span>
-                      <a href="#references">References</a>
-                    </li>
-                    <li>
-                      <span>7</span>
-                      <a href="#further-reading">Further reading</a>
-                    </li>
-                    <li>
-                      <span>8</span>
-                      <a href="#external-links">External links</a>
-                    </li>
-                  </ol>
-                )}
-              </nav>
-
-              <div className="main-article-content">
-                <p>
-                  <b>Pottery</b> was produced in{" "}
-                  <a href="#">enormous quantities</a> in{" "}
-                  <a href="#">ancient Rome</a>, mostly for utilitarian purposes.
-                  It is found all over the former <a href="#">Roman Empire</a>{" "}
-                  and beyond. <a href="#">Monte Testaccio</a> is a huge{" "}
-                  <a href="#">waste mound</a> in Rome made almost entirely of
-                  broken <a href="#">amphorae</a> used for transporting and
-                  storing liquids and other products – in this case probably
-                  mostly Spanish olive oil, which was landed nearby, and was the
-                  main fuel for lighting, as well as its use in the kitchen and
-                  washing in the <a href="#">baths</a>.
-                </p>
-
-                <div className="infobox">
-                  <div className="infobox-image">
-                    <img
-                      src="https://gcp-la8-storage-cdn.lot-art.com/public/upl/65/Ancient-Roman-terra-sigillata-Bowl-with-decoration-in-relief-Probably-from-southern-Gaul_1619859378_7983.jpg"
-                      alt="Ancient Roman pottery bowl"
-                    />
-                    <div className="infobox-caption">
-                      Decorated <i>terra sigillata</i> bowl from Gaul (
-                      <a href="#">Metz</a> in France)
-                    </div>
-                  </div>
-                </div>
-
-                <p>
-                  It is usual to divide Roman domestic pottery broadly into
-                  coarse wares and fine wares, the former being the everyday
-                  pottery jars, dishes and bowls that were used for cooking or
-                  the storage and transport of foods and other goods, and are
-                  usually made of coarser and more absorbent fabric. Fine wares
-                  were serving vessels or tableware used for more formal dining,
-                  and are usually made at specialized pottery workshops, and
-                  were often traded over substantial distances, not only within,
-                  but also between, different provinces of the Roman Empire. For
-                  example, dozens of different types of <a href="#">British</a>{" "}
-                  coarse and fine wares were produced locally
-                  <sup>
-                    <a href="#cite_note-1">[1]</a>
-                  </sup>{" "}
-                  yet many other classes of pottery were also imported from
-                  elsewhere in the Empire. The manufacture of fine wares such as{" "}
-                  <a href="#">terra sigillata</a> took place in large workshop
-                  complexes that were organized along industrial lines and
-                  produced highly standardized products that tend themselves
-                  well to precise and systematic <a href="#">classification</a>.
-                </p>
-
-                <div className="thumb tright">
-                  <div className="thumbinner">
-                    <img
-                      src="https://collectionapi.metmuseum.org/api/collection/v1/iiif/240017/538615/main-image"
-                      alt="Ancient pottery flask"
-                      className="thumbimage"
-                    />
-                    <div className="thumbcaption">
-                      Unusually ambitious <a href="#">Samian ware</a> flask from
-                      Southern Gaul around 100 AD. <a href="#">Heracles</a> is
-                      being <a href="#">Licomedon</a>.
-                    </div>
-                  </div>
-                </div>
-
-                <p>
-                  There is no direct Roman equivalent to the artistically
-                  central <a href="#">vase-painting</a> of{" "}
-                  <a href="#">ancient Greece</a>, and few objects of outstanding
-                  artistic interest.
-                  <sup>
-                    <a href="#cite_note-2">[2]</a>
-                  </sup>{" "}
-                  have survived, but there is a great deal of fine tableware,
-                  and many small figures, often incorporated into oil lamps or
-                  similar objects, and often with religious or erotic themes.
-                  Roman burial customs varied over time and space, so vessels
-                  deposited as <a href="#">grave goods</a>, the usual source of
-                  complete ancient pottery vessels, are not always abundant,
-                  though all Roman sites produce plenty of broken pottery,
-                  giving good evidence for the types in use. &ldquo;Fine&rdquo;
-                  rather than luxury pottery is the main strength of Roman
-                  pottery, and the highest quality pottery,{" "}
-                  <a href="#">Roman glass</a>, which the elite often used
-                  alongside gold or silver tableware, and which could be
-                  extremely extravagant and expensive. It is clear from the
-                  quantities found that fine pottery was used very widely in
-                  both social and geographic terms. The more expensive pottery
-                  tended to use <a href="#">relief</a> decoration, usually
-                  moulded, rather than colour, and often copied shapes and
-                  decoration from the more prestigious metalwork. Especially in
-                  the Eastern Empire, local traditions continued, hybridizing
-                  with Roman styles to varying extents. From the 3rd century the
-                  quality of fine pottery steadily declined, partly because of
-                  economic and political disturbances, and because glassware was
-                  replacing pottery for drinking cups (the rich had always
-                  preferred it).
-                </p>
-
-                <p>
-                  Fired clay or <a href="#">terracotta</a> was also widely
-                  employed in the Roman period for architectural purposes, as
-                  structural bricks and tiles, and occasionally as architectural
-                  decoration, and for the manufacture of small statuettes and
-                  lamps. These are not normally classified under the heading
-                  &lsquo;pottery&rsquo; by archaeologists, but the terracottas
-                  and lamps will be included in this article.
-                </p>
-
-                <p>
-                  Pottery is a key material in the dating and interpretation of
-                  archaeological sites from the Neolithic period onwards, and
-                  has been minutely studied by archaeologists for generations.
-                  In the Roman period, ceramics were produced and used in
-                  enormous quantities, and the literature on the subject, in
-                  numerous languages, is very extensive.
-                </p>
-
-                <h2 id="fine-wares">Fine wares</h2>
-                <h3 id="terra-sigillata">Terra sigillata or red-gloss wares</h3>
-                <p>
-                  <a href="#">Terra sigillata</a> is a class of fine red-gloss
-                  pottery mass-produced in standardized shapes and decorated
-                  with moulded relief scenes. The decoration typically depicts
-                  scenes from classical mythology, or sometimes gladiatorial
-                  combats or erotic scenes. The main centers of production were
-                  in Italy and southern Gaul, though it was produced throughout
-                  the Roman Empire.
-                </p>
-
-                <p>
-                  The Italian sigillata industry was started by immigrant
-                  potters from the eastern Mediterranean, where there was a long
-                  tradition of mould-made pottery. The earliest and
-                  highest-quality Italian products, Arretine ware from Arezzo,
-                  were shipped throughout the Empire, but gradually provincial
-                  centers of production grew up, and Italian exports declined.
-                  The Gaulish industries, particularly those of{" "}
-                  <a href="#">La Graufesenque</a> near Millau and{" "}
-                  <a href="#">Lezoux</a>, flourished in the 1st and 2nd
-                  centuries AD.
-                </p>
-
-                <div className="thumb tright">
-                  <div className="thumbinner">
-                    <img
-                      src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/TerraSigillataRGM.jpeg/330px-TerraSigillataRGM.jpeg"
-                      alt="Terra sigillata pottery"
-                      className="thumbimage"
-                    />
-                    <div className="thumbcaption">
-                      Terra sigillata pottery with characteristic red-gloss
-                      finish and relief decoration.
-                    </div>
-                  </div>
-                </div>
-
-                <h3 id="other-fine-wares">Other fine wares</h3>
-                <p>
-                  A wide range of fine wares were produced throughout the Roman
-                  period. These include:
-                </p>
-                <ul>
-                  <li>
-                    <b>Black-gloss ware</b>: A predecessor to terra sigillata,
-                    produced in Italy from the 4th to 1st centuries BC.
-                  </li>
-                  <li>
-                    <b>Thin-walled pottery</b>: Delicate beakers and cups with
-                    walls as thin as 1.5 mm, often with barbotine (slip-trailed)
-                    decoration.
-                  </li>
-                  <li>
-                    <b>Colour-coated wares</b>: Various regional fine wares with
-                    colored slips, including the Rhenish wares of Germany and
-                    Nene Valley wares of Britain.
-                  </li>
-                  <li>
-                    <b>African Red Slip ware</b>: Produced in North Africa from
-                    the 1st to 7th centuries AD, eventually replacing terra
-                    sigillata as the Empire&rsquo;s main fine tableware.
-                  </li>
-                </ul>
-
-                <h2 id="coarse-wares">Coarse wares</h2>
-                <p>
-                  Coarse wares were used for cooking, storage, and transport.
-                  They were typically made locally and were rarely traded over
-                  long distances. The fabric is usually rough and contains
-                  visible inclusions like sand or crushed rock.
-                </p>
-
-                <div className="thumb tright">
-                  <div className="thumbinner">
-                    <img
-                      src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcStMc28Ys2tobkPyqjTlVad6cDZ2ZXcwjiAUQ&s"
-                      alt="Roman coarse ware pottery"
-                      className="thumbimage"
-                    />
-                    <div className="thumbcaption">
-                      Examples of Roman coarse ware pottery used for everyday
-                      cooking and storage.
-                    </div>
-                  </div>
-                </div>
-
-                <h3 id="cooking-pots">Cooking pots</h3>
-                <p>
-                  Roman cooking pots were usually round-bottomed vessels made of
-                  coarse, heat-resistant clay. They often show signs of burning
-                  or sooting from use over fires. Common forms include
-                  casseroles, deep pots for boiling, and shallow pans for
-                  frying.
-                </p>
-
-                <h3 id="mortaria">Mortaria</h3>
-                <p>
-                  <a href="#">Mortaria</a> were heavy mixing bowls with a gritty
-                  interior surface used for grinding and mixing foods. They
-                  often have a spout for pouring and a distinctive rim profile.
-                  Stamps on mortaria sometimes identify the potter.
-                </p>
-
-                <h3 id="amphorae">Amphorae</h3>
-                <p>
-                  <a href="#">Amphorae</a> were large storage and transport
-                  vessels, particularly for liquids like wine, olive oil, and
-                  fish sauce (garum). Different regions produced distinctive
-                  amphora shapes specialized for particular products.
-                </p>
-
-                <h3 id="description">Description and function</h3>
-                <p>
-                  Amphorae were the standard shipping containers of the Roman
-                  world, used to transport liquids and semi-liquids in bulk.
-                  They had a characteristic two-handled design and were often
-                  sealed with clay or cork stoppers, sometimes covered with
-                  pozzolanic cement. Inscriptions on amphorae, known as tituli
-                  picti, often indicated their contents, origin, or the names of
-                  merchants involved in their trade.
-                </p>
-
-                <h2 id="references">References</h2>
-                <div className="references">
-                  <ol>
-                    <li id="cite_note-1">
-                      <span className="mw-cite-backlink">
-                        <a href="#">^</a>
-                      </span>{" "}
-                      <span className="reference-text">
-                        Swan, V.G. (1980). <i>Pottery in Roman Britain</i>.
-                        Shire Archaeology. pp. 23–45.
-                      </span>
-                    </li>
-                    <li id="cite_note-2">
-                      <span className="mw-cite-backlink">
-                        <a href="#">^</a>
-                      </span>{" "}
-                      <span className="reference-text">
-                        Hayes, J.W. (1997).{" "}
-                        <i>Handbook of Mediterranean Roman Pottery</i>.
-                        University of Oklahoma Press. pp. 112–114.
-                      </span>
-                    </li>
-                  </ol>
-                </div>
-
-                <h2 id="further-reading">Further reading</h2>
-                <ul className="further-reading">
-                  <li>
-                    Peacock, D.P.S. (1982).{" "}
-                    <i>
-                      Pottery in the Roman World: an ethnoarchaeological
-                      approach
-                    </i>
-                    . London: Longman.
-                  </li>
-                  <li>
-                    Webster, P. (1996). <i>Roman Samian Pottery in Britain</i>.
-                    York: Council for British Archaeology.
-                  </li>
-                  <li>
-                    Fulford, M. and Wallace-Hadrill, A. (1999). &ldquo;Towards a
-                    history of pre-Roman Pompeii: excavations beneath the House
-                    of Amarantus (1995-8)&rdquo;.{" "}
-                    <i>Papers of the British School at Rome</i> 67: 37-144.
-                  </li>
-                </ul>
-
-                <h2 id="external-links">External links</h2>
-                <ul className="external-links">
-                  <li>
-                    <a className="external" href="#">
-                      Potsherd: Atlas of Roman Pottery
-                    </a>
-                  </li>
-                  <li>
-                    <a className="external" href="#">
-                      Ceramics in the Roman World
-                    </a>
-                  </li>
-                  <li>
-                    <a className="external" href="#">
-                      Roman Pottery Database
-                    </a>
-                  </li>
-                </ul>
-
-                <div className="categories">
-                  <div className="catlinks">
-                    Categories:{" "}
-                    <ul>
-                      <li>
-                        <a href="#">Ancient Roman pottery</a>
-                      </li>
-                      <li>
-                        <a href="#">Roman Empire</a>
-                      </li>
-                      <li>
-                        <a href="#">Archaeological artifacts</a>
-                      </li>
-                      <li>
-                        <a href="#">Ceramic art</a>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </main>
-
-          <div className="footer">
-            <div className="footer-info">
-              <p>This page was last edited on 13 May 2025, at 15:12 (UTC).</p>
-              <p>
-                Text is available under the{" "}
-                <a href="#">
-                  Creative Commons Attribution-ShareAlike License 3.0
-                </a>
-                ; additional terms may apply. By using this site, you agree to
-                the <a href="#">Terms of Use</a> and{" "}
-                <a href="#">Privacy Policy</a>. Wikipedia® is a registered
-                trademark of the <a href="#">Wikimedia Foundation, Inc.</a>, a
-                non-profit organization.
-              </p>
-            </div>
-            <div className="footer-places">
-              <ul>
-                <li>
-                  <a href="#">Privacy policy</a>
-                </li>
-                <li>
-                  <a href="#">About Wikipedia</a>
-                </li>
-                <li>
-                  <a href="#">Disclaimers</a>
-                </li>
-                <li>
-                  <a href="#">Contact Wikipedia</a>
-                </li>
-                <li>
-                  <a href="#">Mobile view</a>
-                </li>
-                <li>
-                  <a href="#">Developers</a>
-                </li>
-                <li>
-                  <a href="#">Statistics</a>
-                </li>
-                <li>
-                  <a href="#">Cookie statement</a>
-                </li>
-              </ul>
-            </div>
+            <button type="submit" disabled={!content.trim() && !mediaFile} className="bg-blue-600 text-white font-bold py-2 px-5 rounded-full hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">
+              Post
+            </button>
           </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+
+// Post Card Component
+const PostCard: FC<{
+  post: Post;
+  users: User[];
+  currentUserId: number;
+  onLike: (postId: number) => void;
+  onAddComment: (postId: number, text: string) => void;
+  onEditPost: (updatedPost: Post) => void;
+  onDeletePost: (postId: number) => void;
+  onViewProfile: (userId: number) => void;
+}> = ({ post, users, currentUserId, onLike, onAddComment, onEditPost, onDeletePost, onViewProfile }) => {
+  const author = findUserById(post.userId, users);
+  const currentUser = findUserById(currentUserId, users);
+  const [commentText, setCommentText] = useState('');
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [showCommentInput, setShowCommentInput] = useState(false);
+  const hasLiked = post.likes.includes(currentUserId);
+  const isAuthor = post.userId === currentUserId;
+
+  const handleCommentSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (commentText.trim()) {
+      onAddComment(post.id, commentText.trim());
+      setCommentText('');
+      setShowCommentInput(false);
+    }
+  };
+
+  if (!author || !currentUser) return null;
+
+  return (
+    <div className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center">
+            <img 
+                src={author.avatar} 
+                alt={author.name} 
+                className="h-12 w-12 rounded-full mr-3 object-cover cursor-pointer"
+                onClick={() => onViewProfile(author.id)} 
+            />
+            <div>
+                <p 
+                    className="font-semibold text-gray-800 text-sm cursor-pointer hover:underline"
+                    onClick={() => onViewProfile(author.id)}
+                >
+                    {author.name}
+                </p>
+                <p className="text-xs text-gray-500">{author.bio}</p>
+            </div>
         </div>
+        {isAuthor && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setEditModalOpen(true)} className="text-gray-500 hover:text-blue-600 p-2 rounded-full transition-colors">
+              <EditIcon />
+            </button>
+            <button 
+              onClick={() => onDeletePost(post.id)} 
+              className="text-gray-500 hover:text-red-600 p-2 rounded-full transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
-      <style jsx>{`
-        /* CSS Variables for theme control */
-        :root {
-          --text-size: 0.875rem;
-          --content-width: 100%;
-          --bg-color: #ffffff;
-          --text-color: #202122;
-          --link-color: #0645ad;
-          --visited-color: #0b0080;
-        }
-
-        /* Reset and base styles */
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-
-        /* Screen reader only text for accessibility */
-        .sr-only {
-          position: absolute;
-          width: 1px;
-          height: 1px;
-          padding: 0;
-          margin: -1px;
-          overflow: hidden;
-          clip: rect(0, 0, 0, 0);
-          white-space: nowrap;
-          border: 0;
-        }
-
-        /* Mobile overlay */
-        .mobile-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-color: rgba(0, 0, 0, 0.5);
-          z-index: 999;
-          display: none;
-        }
-
-        @media (max-width: 850px) {
-          .mobile-overlay {
-            display: block;
-          }
-        }
-
-        /* Wikipedia fonts */
-        @font-face {
-          font-family: "Linux Libertine";
-          src: url("https://en.wikipedia.org/static/fonts/linux-libertine/LinLibertine_RZ.woff")
-            format("woff");
-        }
-
-        .wikipedia-container {
-          font-family: sans-serif;
-          font-size: var(--text-size);
-          line-height: 1.6;
-          color: var(--text-color);
-          display: flex;
-          background-color: var(--bg-color);
-          max-width: 100%;
-          overflow-x: hidden;
-        }
-
-        /* Sidebar styles */
-        .sidebar {
-          width: 176px;
-          background-color: #f8f9fa;
-          padding: 1.25rem 0.75rem;
-          border-right: 1px solid #a7d7f9;
-          height: auto;
-          position: relative;
-          flex-shrink: 0;
-          z-index: 100;
-        }
-
-        .logo {
-          margin-bottom: 1rem;
-          text-align: center;
-        }
-
-        .logo img {
-          width: 135px;
-          height: auto;
-        }
-
-        .sidebar-navigation {
-          font-size: 0.75rem;
-        }
-
-        .sidebar-section {
-          margin-bottom: 1.5rem;
-        }
-
-        .sidebar-heading {
-          color: #54595d;
-          font-weight: normal;
-          border-bottom: 1px solid #c8ccd1;
-          margin-bottom: 0.25rem;
-          padding-bottom: 0.125rem;
-        }
-
-        .sidebar-navigation ul {
-          list-style: none;
-        }
-
-        .sidebar-navigation li {
-          padding: 0.125rem 0;
-        }
-
-        .sidebar-navigation a {
-          color: var(--link-color);
-          text-decoration: none;
-        }
-
-        .sidebar-navigation a:hover {
-          text-decoration: underline;
-        }
-
-        .sidebar-navigation a:visited {
-          color: var(--visited-color);
-        }
-
-        /* Main content styles */
-        .main-content {
-          flex: 1;
-          max-width: calc(100% - 176px);
-        }
-
-        /* Header styles */
-        .header {
-          display: flex;
-          align-items: center;
-          padding: 0.5rem 1rem;
-          background-color: #f8f9fa;
-          border-bottom: 1px solid #a7d7f9;
-        }
-
-        .header-menu {
-          display: flex;
-          align-items: center;
-        }
-
-        .menu-toggle {
-          background: none;
-          border: none;
-          font-size: 1.25rem;
-          cursor: pointer;
-          padding: 0.25rem;
-          color: #54595d;
-        }
-
-        .header-logo {
-          display: flex;
-          align-items: center;
-          margin-right: 1rem;
-        }
-
-        .header-logo a {
-          display: flex;
-          align-items: center;
-          text-decoration: none;
-        }
-
-        .header-logo img {
-          height: 3rem;
-          margin-right: 0.5rem;
-        }
-
-        .header-logo-text {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .header-logo-title {
-          font-family: "Linux Libertine", Georgia, Times, serif;
-          font-size: 1.5rem;
-          color: #000;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-
-        .header-logo-subtitle {
-          font-size: 0.75rem;
-          color: #54595d;
-        }
-
-        .header-search {
-          flex: 1;
-          max-width: 600px;
-          margin: 0 1rem;
-        }
-
-        .header-search form {
-          display: flex;
-        }
-
-        .header-search input {
-          flex: 1;
-          height: 2.25rem;
-          padding: 0.25rem 0.5rem;
-          border: 1px solid #a2a9b1;
-          border-radius: 2px 0 0 2px;
-          font-size: 0.875rem;
-        }
-
-        .header-search button {
-          height: 2.25rem;
-          padding: 0 0.75rem;
-          background-color: #f8f9fa;
-          border: 1px solid #a2a9b1;
-          border-left: none;
-          border-radius: 0 2px 2px 0;
-          cursor: pointer;
-        }
-
-        .header-user {
-          display: flex;
-          align-items: center;
-        }
-
-        .header-user a {
-          margin-left: 1rem;
-          color: var(--link-color);
-          text-decoration: none;
-          font-size: 0.875rem;
-        }
-
-        .header-user a:hover {
-          text-decoration: underline;
-        }
-
-        .more-menu {
-          background: none;
-          border: none;
-          font-size: 1.25rem;
-          cursor: pointer;
-          padding: 0.25rem;
-          margin-left: 0.5rem;
-          color: #54595d;
-        }
-
-        .mobile-header {
-          display: none;
-        }
-
-        /* Content navigation styles */
-        .content-navigation {
-          display: flex;
-          border-bottom: 1px solid #a7d7f9;
-          background-color: #f6f6f6;
-          font-size: 0.75rem;
-          padding: 0 1rem;
-          position: relative;
-        }
-
-        .namespaces,
-        .views {
-          display: flex;
-        }
-
-        .namespaces ul,
-        .views ul {
-          list-style: none;
-          display: flex;
-        }
-
-        .namespaces li,
-        .views li {
-          margin-right: 0.5rem;
-        }
-
-        .namespaces a,
-        .views a {
-          display: block;
-          padding: 0.5rem 0.75rem;
-          color: var(--link-color);
-          text-decoration: none;
-        }
-
-        .namespaces a:hover,
-        .views a:hover {
-          text-decoration: underline;
-        }
-
-        .namespaces .selected a,
-        .views .selected a {
-          color: #222;
-          font-weight: bold;
-          background-color: white;
-          border: 1px solid #a7d7f9;
-          border-bottom: 1px solid white;
-        }
-
-        .views {
-          margin-left: auto;
-        }
-
-        .appearance-menu {
-          margin-left: 1rem;
-          position: relative;
-        }
-
-        .appearance-menu button {
-          display: flex;
-          align-items: center;
-          background: none;
-          border: none;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.75rem;
-          cursor: pointer;
-        }
-
-        .appearance-menu button svg {
-          margin-left: 0.25rem;
-        }
-
-        .appearance-dropdown {
-          position: absolute;
-          top: 100%;
-          right: 0;
-          width: 200px;
-          background-color: white;
-          border: 1px solid #a7d7f9;
-          border-top: none;
-          padding: 0.5rem;
-          z-index: 10;
-        }
-
-        .appearance-section {
-          margin-bottom: 1rem;
-        }
-
-        .appearance-section h3 {
-          font-size: 0.875rem;
-          margin-bottom: 0.5rem;
-        }
-
-        .appearance-options {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .appearance-options label {
-          display: flex;
-          align-items: center;
-          margin-bottom: 0.25rem;
-        }
-
-        .appearance-options input {
-          margin-right: 0.5rem;
-        }
-
-        /* Language button styles */
-        .language-button {
-          position: absolute;
-          top: 0.5rem;
-          right: 1rem;
-          display: flex;
-          align-items: center;
-          background-color: #f8f9fa;
-          border: 1px solid #a7d7f9;
-          border-radius: 2px;
-          padding: 0.25rem 0.5rem;
-          font-size: 0.75rem;
-          cursor: pointer;
-          z-index: 5;
-        }
-
-        .language-button svg {
-          margin-right: 0.25rem;
-        }
-
-        .language-button span {
-          margin: 0 0.25rem;
-        }
-
-        .language-dropdown {
-          position: absolute;
-          top: 100%;
-          right: 0;
-          width: 200px;
-          background-color: white;
-          border: 1px solid #a7d7f9;
-          border-radius: 2px;
-          margin-top: 0.25rem;
-          z-index: 10;
-        }
-
-        .language-dropdown-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.5rem;
-          border-bottom: 1px solid #a7d7f9;
-        }
-
-        .language-dropdown-header button {
-          background: none;
-          border: none;
-          cursor: pointer;
-        }
-
-        .language-dropdown ul {
-          list-style: none;
-          max-height: 300px;
-          overflow-y: auto;
-        }
-
-        .language-dropdown li {
-          padding: 0.25rem 0.5rem;
-        }
-
-        .language-dropdown a {
-          color: var(--link-color);
-          text-decoration: none;
-          display: block;
-        }
-
-        .language-dropdown a:hover {
-          text-decoration: underline;
-        }
-
-        /* Article styles */
-        .article {
-          padding: 1rem 1.5rem;
-          background-color: var(--bg-color);
-          border-left: 1px solid #a7d7f9;
-          border-bottom: 1px solid #a7d7f9;
-          min-height: calc(100vh - 5rem);
-          position: relative;
-        }
-
-        .firstHeading {
-          font-family: "Linux Libertine", Georgia, Times, serif;
-          font-size: 1.8rem;
-          font-weight: normal;
-          border-bottom: 1px solid #a2a9b1;
-          margin-bottom: 0.25rem;
-          padding-bottom: 0.125rem;
-          overflow-wrap: break-word;
-          color: var(--text-color);
-        }
-
-        .article-info {
-          color: #54595d;
-          font-size: 0.875rem;
-          margin-bottom: 1rem;
-        }
-
-        /* Contents styles */
-        .contents {
-          display: table;
-          border: 1px solid #a2a9b1;
-          background-color: #f8f9fa;
-          padding: 0.5rem;
-          margin: 1rem 0 2rem 0; /* Increased bottom margin */
-          font-size: 0.875rem;
-          float: left;
-          clear: right;
-          width: auto;
-          min-width: 15rem;
-          margin-right: 2rem; /* Added right margin */
-        }
-
-        .contents.collapsed {
-          padding-bottom: 0;
-        }
-
-        .contents-header {
-          text-align: center;
-          font-weight: bold;
-          margin-bottom: 0.5rem;
-          cursor: pointer;
-        }
-
-        .hide-button {
-          color: var(--link-color);
-          cursor: pointer;
-          margin-left: 0.25rem;
-          background: none;
-          border: none;
-          font-size: inherit;
-          font-family: inherit;
-          padding: 0;
-        }
-
-        .hide-button:hover {
-          text-decoration: underline;
-        }
-
-        .hide-button:focus {
-          outline: 2px solid var(--link-color);
-          outline-offset: 2px;
-        }
-
-        .contents ul {
-          list-style: none;
-          margin-left: 1rem;
-        }
-
-        .contents li {
-          margin: 0.25rem 0;
-        }
-
-        .contents a {
-          color: var(--link-color);
-          text-decoration: none;
-        }
-
-        .contents a:hover {
-          text-decoration: underline;
-        }
-
-        .contents span {
-          margin-right: 0.5rem;
-        }
-
-        /* Main article content styles */
-        .main-article-content {
-          font-size: var(--text-size);
-          line-height: 1.6;
-          width: var(--content-width);
-          padding-top: 1rem; /* Added top padding */
-        }
-
-        .main-article-content p {
-          margin-bottom: 1rem; /* Increased paragraph spacing */
-          color: var(--text-color);
-        }
-
-        .main-article-content a {
-          color: var(--link-color);
-          text-decoration: none;
-        }
-
-        .main-article-content a:hover {
-          text-decoration: underline;
-        }
-
-        .main-article-content a:visited {
-          color: var(--visited-color);
-        }
-
-        .main-article-content h2 {
-          font-family: "Linux Libertine", Georgia, Times, serif;
-          font-size: 1.5rem;
-          font-weight: normal;
-          border-bottom: 1px solid #a2a9b1;
-          margin: 1.5rem 0 0.5rem;
-          padding-bottom: 0.125rem;
-          color: var(--text-color);
-        }
-
-        .main-article-content h3 {
-          font-size: 1.2rem;
-          font-weight: bold;
-          margin: 1.25rem 0 0.5rem;
-          color: var(--text-color);
-        }
-
-        .main-article-content sup {
-          vertical-align: super;
-          font-size: 0.75rem;
-          line-height: 0;
-        }
-
-        .main-article-content ul {
-          margin: 0.5rem 0 0.5rem 1.5rem;
-        }
-
-        .main-article-content li {
-          margin-bottom: 0.25rem;
-        }
-
-        /* Infobox styles */
-        .infobox {
-          float: right;
-          margin: 0.5rem 0 1.5rem 1.5rem; /* Increased margins */
-          padding: 0.5rem; /* Increased padding */
-          border: 1px solid #a2a9b1;
-          background-color: #f8f9fa;
-          font-size: 0.875rem;
-          width: 22rem;
-          clear: right;
-        }
-
-        .infobox-image {
-          text-align: center;
-          margin-bottom: 0.5rem;
-        }
-
-        .infobox-image img {
-          max-width: 100%;
-          height: auto;
-          border: 1px solid #c8ccd1;
-        }
-
-        .infobox-caption {
-          font-size: 0.75rem;
-          text-align: center;
-          padding: 0.25rem;
-        }
-
-        /* Thumb styles */
-        .thumb {
-          margin: 0.75rem 0 1.5rem 0; /* Increased margins */
-          border: 1px solid #c8ccd1;
-          padding: 5px; /* Increased padding */
-          background-color: #f8f9fa;
-          font-size: 0.75rem;
-        }
-
-        .tright {
-          float: right;
-          clear: right;
-          margin-left: 1.75rem; /* Increased left margin */
-          margin-right: 0;
-        }
-
-        .thumbinner {
-          min-width: 100px;
-          max-width: 220px;
-        }
-
-        .thumbimage {
-          border: 1px solid #c8ccd1;
-          background-color: #fff;
-          max-width: 100%;
-          height: auto;
-        }
-
-        .thumbcaption {
-          text-align: left;
-          padding: 0.25rem 0;
-        }
-
-        /* References styles */
-        .references {
-          font-size: 0.875rem;
-        }
-
-        .references ol {
-          margin-left: 2rem;
-        }
-
-        .references li {
-          margin-bottom: 0.5rem;
-        }
-
-        .mw-cite-backlink {
-          margin-right: 0.5rem;
-        }
-
-        .reference-text {
-          color: var(--text-color);
-        }
-
-        /* External links styles */
-        .external-links,
-        .further-reading {
-          list-style: none;
-          margin-left: 1.5rem;
-        }
-
-        .external-links li,
-        .further-reading li {
-          margin-bottom: 0.25rem;
-        }
-
-        .external {
-          background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAVklEQVR4Xn3PgQkAMQhDUXfqTu7kTtkpd5RA8AInfArtQ2iRXFWT2QkPDYznL0calbbq0/1mB3i6Oeo+MTtI8k8+pD/9MwrNRjgOMS/OSoVULMnDqtxFgY69AKYrYtMAAAAASUVORK5CYII=")
-            no-repeat right center;
-          padding-right: 13px;
-        }
-
-        /* Categories styles */
-        .categories {
-          margin-top: 2rem;
-          border-top: 1px solid #a2a9b1;
-          padding-top: 0.5rem;
-          font-size: 0.875rem;
-        }
-
-        .catlinks {
-          color: #54595d;
-        }
-
-        .catlinks ul {
-          display: inline;
-          list-style: none;
-        }
-
-        .catlinks li {
-          display: inline;
-          margin-right: 0.5rem;
-          border-left: 1px solid #a2a9b1;
-          padding-left: 0.5rem;
-        }
-
-        .catlinks li:first-child {
-          border-left: none;
-          padding-left: 0;
-        }
-
-        .catlinks a {
-          color: var(--link-color);
-          text-decoration: none;
-        }
-
-        .catlinks a:hover {
-          text-decoration: underline;
-        }
-
-        /* Footer styles */
-        .footer {
-          padding: 1rem 1.5rem;
-          font-size: 0.75rem;
-          color: #54595d;
-          background-color: #f8f9fa;
-        }
-
-        .footer-info p {
-          margin-bottom: 0.5rem;
-        }
-
-        .footer-info a,
-        .footer-places a {
-          color: var(--link-color);
-          text-decoration: none;
-        }
-
-        .footer-info a:hover,
-        .footer-places a:hover {
-          text-decoration: underline;
-        }
-
-        .footer-places {
-          margin-top: 1rem;
-        }
-
-        .footer-places ul {
-          list-style: none;
-          display: flex;
-          flex-wrap: wrap;
-        }
-
-        .footer-places li {
-          margin-right: 1rem;
-          margin-bottom: 0.5rem;
-        }
-
-        /* Responsive styles */
-        @media (max-width: 850px) {
-          .wikipedia-container {
-            flex-direction: column;
-          }
-
-          .sidebar {
-            position: fixed;
-            left: -100%;
-            z-index: 1000;
-            transition: left 0.3s ease;
-            width: 80%;
-            max-width: 300px;
-            height: 100vh; /* Full height on mobile */
-            overflow-y: auto; /* Allow scrolling on mobile only */
-          }
-
-          .sidebar.open {
-            left: 0;
-          }
-
-          .main-content {
-            max-width: 100%;
-          }
-
-          .header {
-            flex-wrap: wrap;
-          }
-
-          .header-search {
-            order: 3;
-            width: 100%;
-            max-width: 100%;
-            margin: 0.5rem 0 0;
-          }
-
-          .header-user {
-            margin-left: auto;
-          }
-
-          .mobile-header {
-            display: flex;
-            align-items: center;
-            padding: 0.5rem;
-            border-bottom: 1px solid #a7d7f9;
-            background-color: #f6f6f6;
-          }
-
-          .menu-toggle {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem;
-          }
-
-          .mobile-logo {
-            flex: 1;
-            text-align: center;
-          }
-
-          .mobile-logo img {
-            height: 1.5rem;
-          }
-
-          .mobile-search-icon {
-            font-size: 1.25rem;
-            padding: 0.25rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #54595d;
-          }
-
-          .mobile-search-icon:focus {
-            outline: 2px solid var(--link-color);
-            outline-offset: 2px;
-          }
-
-          .infobox {
-            float: none;
-            width: 100%;
-            margin: 1rem 0;
-          }
-
-          .tright {
-            float: none;
-            margin: 1rem 0;
-          }
-
-          .thumbinner {
-            max-width: 100%;
-          }
-
-          .language-button {
-            position: static;
-            margin: 0.5rem 0;
-          }
-
-          .language-dropdown {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 300px;
-          }
-        }
-
-        .menu-toggle:focus {
-          outline: 2px solid var(--link-color);
-          outline-offset: 2px;
-        }
-
-        .more-menu:focus {
-          outline: 2px solid var(--link-color);
-          outline-offset: 2px;
-        }
-
-        .appearance-menu button:focus {
-          outline: 2px solid var(--link-color);
-          outline-offset: 2px;
-        }
-
-        .language-button:focus-within {
-          outline: 2px solid var(--link-color);
-          outline-offset: 2px;
-        }
-
-        .language-dropdown-header button:focus {
-          outline: 2px solid var(--link-color);
-          outline-offset: 2px;
+      {post.content && <p className="text-gray-800 mb-4 text-sm whitespace-pre-wrap">{post.content}</p>}
+
+      {post.media && (
+        <div className="mb-2 -mx-4">
+          {post.media.type === 'image' ? (
+            <img src={post.media.url} alt="Post content" className="w-full max-h-[500px] object-cover" />
+          ) : (
+            <video src={post.media.url} controls className="w-full rounded-lg" />
+          )}
+        </div>
+      )}
+
+      <div className="flex justify-between items-center text-xs text-gray-500 py-1">
+        <span>{post.likes.length > 0 ? `${post.likes.length} Likes` : ''}</span>
+        <span>{post.comments.length > 0 ? `${post.comments.length} Comments` : ''}</span>
+      </div>
+
+      <div className="flex justify-around items-center text-gray-600 border-t border-gray-200 mt-1 pt-1">
+        <button onClick={() => onLike(post.id)} className={`flex items-center space-x-2 py-2 px-4 rounded-md w-full justify-center transition-colors hover:bg-gray-100 ${hasLiked ? 'text-red-500 font-semibold' : ''}`}>
+          <LikeIcon filled={hasLiked} /> <span>Like</span>
+        </button>
+        <button 
+          onClick={() => setShowCommentInput(!showCommentInput)} 
+          className="flex items-center space-x-2 py-2 px-4 rounded-md w-full justify-center hover:bg-gray-100"
+        >
+          <CommentIcon /> <span>Comment</span>
+        </button>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {post.comments.map(comment => {
+          const commenter = findUserById(comment.userId, users);
+          if (!commenter) return null;
+          return (
+            <div key={comment.id} className="flex items-start space-x-3">
+              <img 
+                src={commenter.avatar} 
+                alt={commenter.name} 
+                className="h-9 w-9 rounded-full object-cover cursor-pointer" 
+                onClick={() => onViewProfile(commenter.id)}
+              />
+              <div className="bg-gray-100 p-2 rounded-lg flex-1">
+                <p 
+                  className="font-semibold text-xs text-gray-800 cursor-pointer hover:underline"
+                  onClick={() => onViewProfile(commenter.id)}
+                >
+                  {commenter.name}
+                </p>
+                <p className="text-sm text-gray-700">{comment.text}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {showCommentInput && (
+        <form onSubmit={handleCommentSubmit} className="mt-4 flex items-center space-x-3">
+          <img src={currentUser.avatar} alt="You" className="h-9 w-9 rounded-full object-cover"/>
+          <input 
+            type="text" 
+            value={commentText} 
+            onChange={e => setCommentText(e.target.value)} 
+            placeholder="Add a comment..." 
+            className="w-full bg-gray-100 border border-gray-200 p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500" 
+          />
+        </form>
+      )}
+
+      {isEditModalOpen && (
+        <EditPostModal post={post} onClose={() => setEditModalOpen(false)} onSave={onEditPost} />
+      )}
+    </div>
+  );
+};
+
+// Profile Sidebar Component
+const ProfileSidebar: FC<{ user: User, onViewProfile: (userId: number) => void }> = ({ user, onViewProfile }) => (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="h-20 bg-cover bg-center" style={{ backgroundImage: `url(${user.coverPhoto})` }}></div>
+        <div className="p-4 text-center border-b border-gray-200">
+            <img 
+                src={user.avatar} 
+                alt={user.name} 
+                className="w-20 h-20 rounded-full mx-auto -mt-14 border-4 border-white object-cover cursor-pointer"
+                onClick={() => onViewProfile(user.id)}
+            />
+            <h3 
+                className="text-lg font-semibold mt-2 cursor-pointer hover:underline" 
+                onClick={() => onViewProfile(user.id)}
+            >
+                {user.name}
+            </h3>
+            <p className="text-sm text-gray-500">{user.bio}</p>
+        </div>
+        <div className="p-4">
+            <div className="flex justify-between items-center text-sm text-gray-500">
+                <span>Connections</span>
+                <span className="text-blue-600 font-semibold">{user.connections.length}</span>
+            </div>
+            <p className="text-sm font-semibold mt-1">Grow your network</p>
+        </div>
+    </div>
+);
+
+
+// Home Page Component
+const HomePage: FC<{
+  posts: Post[];
+  users: User[];
+  currentUser: User;
+  onLike: (postId: number) => void;
+  onAddComment: (postId: number, text: string) => void;
+  onAddPost: (content: string, file: File | null) => void;
+  onEditPost: (updatedPost: Post) => void;
+  onDeletePost: (postId: number) => void;
+  onViewProfile: (userId: number) => void;
+}> = ({ posts, users, currentUser, onLike, onAddComment, onAddPost, onEditPost, onDeletePost, onViewProfile }) => {
+  const feedUserIds = [currentUser.id, ...currentUser.connections];
+  const feedPosts = posts
+    .filter(post => feedUserIds.includes(post.userId))
+    .sort((a, b) => b.id - a.id);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="hidden md:block md:col-span-1">
+            <ProfileSidebar user={currentUser} onViewProfile={onViewProfile} />
+        </div>
+        <div className="md:col-span-3 lg:col-span-2">
+            <CreatePost currentUser={currentUser} onAddPost={onAddPost} />
+            {feedPosts.map(post => (
+            <PostCard
+                key={post.id}
+                post={post}
+                users={users}
+                currentUserId={currentUser.id}
+                onLike={onLike}
+                onAddComment={onAddComment}
+                onEditPost={onEditPost}
+                onDeletePost={onDeletePost}
+                onViewProfile={onViewProfile}
+            />
+            ))}
+        </div>
+        <div className="hidden lg:block lg:col-span-1">
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 className="font-semibold mb-2">SimpleLinkedin News</h3>
+                <ul className="space-y-2 text-sm">
+                    <li className="font-semibold">AI is transforming industries</li>
+                    <p className="text-xs text-gray-500">Top news - 1,283 readers</p>
+                    <li className="font-semibold">The future of remote work</li>
+                    <p className="text-xs text-gray-500">3d ago - 892 readers</p>
+                </ul>
+            </div>
+        </div>
+    </div>
+  );
+};
+
+// Profile Page Component
+const ProfilePage: FC<{
+  userToDisplay: User;
+  currentUser: User;
+  posts: Post[];
+  users: User[];
+  onEditProfile: () => void;
+  onLike: (postId: number) => void;
+  onAddComment: (postId: number, text: string) => void;
+  onEditPost: (updatedPost: Post) => void;
+  onDeletePost: (postId: number) => void;
+  onViewProfile: (userId: number) => void;
+}> = ({ userToDisplay, currentUser, posts, users, onEditProfile, onLike, onAddComment, onEditPost, onDeletePost, onViewProfile }) => {
+    const userPosts = posts.filter(p => p.userId === userToDisplay.id).sort((a,b) => b.id - a.id);
+    const isOwnProfile = userToDisplay.id === currentUser.id;
+
+  return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-3">
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="relative">
+                    <img src={userToDisplay.coverPhoto} alt="Cover" className="w-full h-40 sm:h-52 object-cover" />
+                    {isOwnProfile && (
+                        <button 
+                            onClick={onEditProfile} 
+                            className="absolute top-4 right-4 flex items-center gap-2 border bg-white/80 backdrop-blur-sm border-gray-300 text-gray-700 font-bold py-2 px-3 rounded-full transition-colors hover:bg-white text-sm"
+                        >
+                            <EditIcon className="w-4 h-4" /> <span>Edit Profile</span>
+                        </button>
+                    )}
+                </div>
+                <div className="p-6 relative">
+                    <div className="absolute left-8 -top-16">
+                        <img src={userToDisplay.avatar} alt="Profile" className="h-32 w-32 rounded-full border-4 border-white object-cover" />
+                    </div>
+                    <div className="pt-16">
+                        <h2 className="text-2xl font-bold text-gray-900">{userToDisplay.name}</h2>
+                        <p className="text-md text-gray-600">{userToDisplay.bio}</p>
+                        <p className="text-sm text-gray-500 mt-1">{userToDisplay.location}</p>
+                    </div>
+                </div>
+                 <div className="border-t border-gray-200 p-6">
+                    <h3 className="text-xl font-semibold text-gray-800">About</h3>
+                    <p className="mt-2 text-gray-700 whitespace-pre-wrap">{userToDisplay.about}</p>
+                </div>
+            </div>
+        </div>
+
+        <div className="lg:col-span-3">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">{isOwnProfile ? "My Posts" : `${userToDisplay.name.split(' ')[0]}'s Posts`}</h3>
+            {userPosts.length > 0 ? userPosts.map(post => (
+                <PostCard
+                    key={post.id}
+                    post={post}
+                    users={users}
+                    currentUserId={currentUser.id}
+                    onLike={onLike}
+                    onAddComment={onAddComment}
+                    onEditPost={onEditPost}
+                    onDeletePost={onDeletePost}
+                    onViewProfile={onViewProfile}
+                />
+            )) : <p className="bg-white rounded-lg border p-4 text-gray-500">{isOwnProfile ? "You haven't posted anything yet." : "This user hasn't posted anything yet."}</p>}
+        </div>
+    </div>
+  );
+};
+
+
+// Network Page Component
+const NetworkPage: FC<{
+  currentUser: User;
+  users: User[];
+  onToggleConnection: (userId: number) => void;
+  onViewProfile: (userId: number) => void;
+}> = ({ currentUser, users, onToggleConnection, onViewProfile }) => {
+  const otherUsers = users.filter(u => u.id !== currentUser.id);
+
+  return (
+    <div className="bg-white p-6 rounded-lg border border-gray-200">
+      <h3 className="text-xl font-bold text-gray-800 mb-4">People you may know</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {otherUsers.map(user => {
+          const isConnected = currentUser.connections.includes(user.id);
+          return (
+            <div key={user.id} className="text-center bg-white rounded-lg border border-gray-200 p-4 flex flex-col items-center">
+              <img src={user.avatar} alt={user.name} className="h-20 w-20 rounded-full mb-2 object-cover cursor-pointer" onClick={() => onViewProfile(user.id)} />
+              <p className="font-bold cursor-pointer hover:underline" onClick={() => onViewProfile(user.id)}>{user.name}</p>
+              <p className="text-sm text-gray-500 h-10 overflow-hidden">{user.bio}</p>
+              <button
+                onClick={() => onToggleConnection(user.id)}
+                className={`mt-4 w-full px-4 py-2 text-sm font-bold rounded-full transition-colors ${isConnected
+                    ? 'border border-gray-500 text-gray-600 hover:bg-gray-200'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-200'
+                  }`}
+              >
+                {isConnected ? 'Disconnect' : 'Connect'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  );
+};
+
+// --- MODAL COMPONENTS ---
+
+const ModalWrapper: FC<{ children: React.ReactNode; title: string; onClose: () => void; }> = ({ children, title, onClose }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center p-4 border-b">
+            <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+        </div>
+        <div className="p-6 max-h-[80vh] overflow-y-auto">
+            {children}
+        </div>
+      </div>
+    </div>
+);
+
+
+const EditProfileModal: FC<{
+  user: User;
+  onClose: () => void;
+  onSave: (updatedUser: User) => void;
+}> = ({ user, onClose, onSave }) => {
+  const [formData, setFormData] = useState(user);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [previewAvatar, setPreviewAvatar] = useState<string>(user.avatar);
+  const [previewCover, setPreviewCover] = useState<string>(user.coverPhoto);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
+      if (type === 'avatar') {
+        setAvatarFile(file);
+        setPreviewAvatar(url);
+      } else {
+        setCoverFile(file);
+        setPreviewCover(url);
+      }
+    }
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    let updatedUser = { ...formData, avatar: previewAvatar, coverPhoto: previewCover };
+    onSave(updatedUser);
+    onClose();
+  };
+
+  return (
+    <ModalWrapper title="Edit Profile" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <div className="space-y-6">
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">Profile Picture</label>
+            <div className="flex items-center gap-4">
+              <img src={previewAvatar} alt="Avatar Preview" className="h-20 w-20 rounded-full object-cover border-2 border-gray-200" />
+              <input id="avatar-upload" type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'avatar')} className="hidden" />
+              <label htmlFor="avatar-upload" className="cursor-pointer border border-gray-300 px-4 py-2 rounded-full text-sm font-semibold hover:bg-gray-50">Change</label>
+            </div>
+          </div>
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">Cover Photo</label>
+            <div className="flex items-center gap-4">
+              <img src={previewCover} alt="Cover Preview" className="h-24 w-full rounded-md object-cover border-2 border-gray-200" />
+            </div>
+            <input id="cover-upload" type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'cover')} className="hidden" />
+            <label htmlFor="cover-upload" className="mt-2 inline-block cursor-pointer border border-gray-300 px-4 py-2 rounded-full text-sm font-semibold hover:bg-gray-50">Change Cover Photo</label>
+          </div>
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-1" htmlFor="name">Name</label>
+            <input className="border rounded-lg w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" id="name" name="name" type="text" value={formData.name} onChange={handleChange} />
+          </div>
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-1" htmlFor="location">Location</label>
+            <input className="border rounded-lg w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" id="location" name="location" type="text" value={formData.location} onChange={handleChange} />
+          </div>
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-1" htmlFor="bio">Bio</label>
+            <textarea className="border rounded-lg w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 h-20" id="bio" name="bio" value={formData.bio} onChange={handleChange} placeholder="A short bio that appears under your name" />
+          </div>
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-1" htmlFor="about">About</label>
+            <textarea className="border rounded-lg w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 h-32" id="about" name="about" value={formData.about} onChange={handleChange} placeholder="Tell us more about yourself..." />
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+          <button className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-full transition-colors" type="button" onClick={onClose}>Cancel</button>
+          <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full transition-colors" type="submit">Save</button>
+        </div>
+      </form>
+    </ModalWrapper>
+  );
+};
+
+
+const EditPostModal: FC<{
+  post: Post;
+  onClose: () => void;
+  onSave: (updatedPost: Post) => void;
+}> = ({ post, onClose, onSave }) => {
+  const [formData, setFormData] = useState(post);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(post.media?.url || null);
+
+  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setFormData(prev => ({ ...prev, content: e.target.value }));
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
+      setMediaFile(file);
+      setPreviewUrl(url);
+      setFormData(prev => ({
+        ...prev,
+        media: { type: file.type.startsWith('image/') ? 'image' : 'video', url }
+      }));
+    }
+  };
+  
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+    onClose();
+  };
+
+  const removeMedia = () => {
+    setMediaFile(null);
+    setPreviewUrl(null);
+    setFormData(prev => ({ ...prev, media: undefined }));
+  };
+
+  return (
+    <ModalWrapper title="Edit Post" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <textarea
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+            rows={5}
+            value={formData.content}
+            onChange={handleChange}
+            placeholder="What's on your mind?"
+        />
+        {previewUrl && formData.media && (
+          <div className="mt-4 relative">
+            {formData.media.type === 'image' ? 
+              <img src={previewUrl} alt="Preview" className="rounded-lg max-h-80 w-full object-contain" /> : 
+              <video src={previewUrl} controls className="rounded-lg max-h-80 w-full" />}
+            <button type="button" onClick={removeMedia} className="absolute top-2 right-2 bg-black bg-opacity-60 text-white rounded-full p-1 hover:bg-opacity-80">&times;</button>
+          </div>
+        )}
+        <div className="flex justify-between items-center mt-4">
+            <input id="edit-media-upload" type="file" accept="image/*,video/*" onChange={handleFileChange} className="hidden" />
+            <label htmlFor="edit-media-upload" className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium flex items-center gap-2">
+                <PhotoIcon/> Change Media
+            </label>
+        </div>
+        <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t">
+          <button type="button" className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-full" onClick={onClose}>Cancel</button>
+          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full">Save</button>
+        </div>
+      </form>
+    </ModalWrapper>
+  );
+};
+
+
+// --- MAIN APP COMPONENT ---
+const App = () => {
+  // State management for users, posts, current user, page, and modals
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [currentUser, setCurrentUser] = useState<User>(users[0]);
+  const [currentPage, setCurrentPage] = useState<Page>('Home');
+  const [isEditProfileModalOpen, setEditProfileModalOpen] = useState(false);
+  const [viewedUserId, setViewedUserId] = useState<number>(currentUser.id);
+
+
+  // Effect to update the currentUser object if the main users array changes
+  useEffect(() => {
+    const updatedCurrentUser = users.find(u => u.id === currentUser.id);
+    if (updatedCurrentUser) {
+      setCurrentUser(updatedCurrentUser);
+    }
+  }, [users, currentUser.id]);
+
+  // --- HANDLER FUNCTIONS ---
+  // These functions manage state changes based on user interactions.
+
+  const handleNavigate = (page: Page) => {
+    if (page === 'Profile') {
+      setViewedUserId(currentUser.id); // Ensure "Me" tab goes to own profile
+    }
+    setCurrentPage(page);
+  };
+
+  const handleViewProfile = (userId: number) => {
+    setViewedUserId(userId);
+    setCurrentPage('Profile');
+  };
+
+  const handleUpdateProfile = (updatedUser: User) => {
+    setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+    setEditProfileModalOpen(false); // Close modal on save
+  };
+
+  const handleLikePost = (postId: number) => {
+    setPosts(prevPosts => prevPosts.map(post => {
+      if (post.id === postId) {
+        const hasLiked = post.likes.includes(currentUser.id);
+        const newLikes = hasLiked
+          ? post.likes.filter(id => id !== currentUser.id)
+          : [...post.likes, currentUser.id];
+        return { ...post, likes: newLikes };
+      }
+      return post;
+    }));
+  };
+
+  const handleAddComment = (postId: number, text: string) => {
+    setPosts(prevPosts => prevPosts.map(post => {
+      if (post.id === postId) {
+        const newComment: Comment = {
+          id: Date.now(),
+          userId: currentUser.id,
+          text,
+        };
+        return { ...post, comments: [...post.comments, newComment] };
+      }
+      return post;
+    }));
+  };
+
+  const handleAddPost = (content: string, file: File | null) => {
+    const newPost: Post = {
+      id: Date.now(),
+      userId: currentUser.id,
+      content,
+      likes: [],
+      comments: []
+    };
+    if (file) {
+      newPost.media = {
+        type: file.type.startsWith('image') ? 'image' : 'video',
+        url: URL.createObjectURL(file)
+      };
+    }
+    setPosts(prevPosts => [newPost, ...prevPosts]);
+  };
+
+  const handleToggleConnection = (userIdToConnect: number) => {
+    setUsers(prevUsers => {
+        const isConnected = currentUser.connections.includes(userIdToConnect);
+        return prevUsers.map(user => {
+            if (user.id === currentUser.id) {
+                const connections = isConnected 
+                    ? user.connections.filter(id => id !== userIdToConnect)
+                    : [...user.connections, userIdToConnect];
+                return { ...user, connections };
+            }
+            if (user.id === userIdToConnect) {
+                const connections = isConnected 
+                    ? user.connections.filter(id => id !== currentUser.id)
+                    : [...user.connections, currentUser.id];
+                return { ...user, connections };
+            }
+            return user;
+        });
+    });
+  };
+
+  const handleEditPost = (updatedPost: Post) => {
+    setPosts(prevPosts => prevPosts.map(post => 
+      post.id === updatedPost.id ? updatedPost : post
+    ));
+  };
+
+  const handleDeletePost = (postId: number) => {
+    setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+  };
+  
+  // --- RENDER LOGIC ---
+  const renderPage = () => {
+    switch(currentPage) {
+      case 'Home':
+        return <HomePage posts={posts} users={users} currentUser={currentUser} onLike={handleLikePost} onAddComment={handleAddComment} onAddPost={handleAddPost} onEditPost={handleEditPost} onDeletePost={handleDeletePost} onViewProfile={handleViewProfile} />;
+      case 'Profile': {
+        const userToDisplay = findUserById(viewedUserId, users);
+        if (!userToDisplay) {
+            // Fallback to home if user not found
+            setCurrentPage('Home');
+            return null;
+        }
+        return <ProfilePage userToDisplay={userToDisplay} currentUser={currentUser} posts={posts} users={users} onEditProfile={() => setEditProfileModalOpen(true)} onLike={handleLikePost} onAddComment={handleAddComment} onEditPost={handleEditPost} onDeletePost={handleDeletePost} onViewProfile={handleViewProfile} />;
+      }
+      case 'Network':
+        return <NetworkPage currentUser={currentUser} users={users} onToggleConnection={handleToggleConnection} onViewProfile={handleViewProfile} />;
+      default:
+        return <HomePage posts={posts} users={users} currentUser={currentUser} onLike={handleLikePost} onAddComment={handleAddComment} onAddPost={handleAddPost} onEditPost={handleEditPost} onDeletePost={handleDeletePost} onViewProfile={handleViewProfile} />;
+    }
+  }
+
+  return (
+    <div className="bg-gray-50 min-h-screen font-sans">
+      <Header
+        user={currentUser}
+        onNavigate={handleNavigate}
+        activePage={currentPage}
+      />
+      <main className="container mx-auto p-4 sm:p-6 lg:p-8">
+        {renderPage()}
+      </main>
+      {isEditProfileModalOpen && (
+        <EditProfileModal
+          user={currentUser}
+          onClose={() => setEditProfileModalOpen(false)}
+          onSave={handleUpdateProfile}
+        />
+      )}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fade-in-up 0.3s ease-out forwards;
         }
       `}</style>
-    </>
+    </div>
   );
-}
+};
+
+export default App;

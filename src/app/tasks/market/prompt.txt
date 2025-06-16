@@ -2,4 +2,22 @@ easy -
 I want to create an online shopping page for my furniture store. Please create the UI using NextJS and Typescript. Provide the response in a single self-contained .tsx file.
 
 medium - 
-I want to create an online shopping page for my furniture store. It should have wooden-themed colors. Users should be able to filter the items based on furniture type and price. The page should be able to work properly on both mobile and laptop. Please create the UI using NextJS and Typescript. Provide the response in a single self-contained .tsx file.
+Create an online shop page for handcrafted furniture using Next.js and TypeScript. It should have a minimalist design and a brown color theme. Furniture items should display an image, name, price, and a short description. There should be a column on the left side to filter items based on type, price, and quantity. Users should also be able to search by the title of products. Users should be able to view the details in a popup of any product by clicking on it. Seed the page with some sample products. Keep the layout responsive so it looks good on both phones and laptops. The response should be self-contained in a single .tsx file.
+
+Title *
+Furniture store.
+
+Description *
+Online store to purchase furniture.
+
+
+Commentary *
+Divide the layout into hero section, footer, side bar for filters, and main section for displaying products.
+
+rewrite response - 
+There were some flaws. The featured products section does not have any images, and the overall UI does not look production-ready. A hero section with a navigation bar, a featured products section with their images and cart functionality along with toast notifications, and a footer to improve the overall user interface is added in the rewrite response. 
+
+https://www.woodenstreet.com/
+
+Justification-
+Design is minimalist and augmented with smooth animations. It provides clear feedback to user submissions. Code is modular with zero lint and type errors. All the features are perfectly functional.
